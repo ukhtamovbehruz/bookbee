@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-parchment text-midnight antialiased transition-colors duration-300;
+  }
+  .dark body {
+    @apply bg-midnight text-parchment;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-black/5 border border-black/10 rounded-2xl md:rounded-3xl backdrop-blur-md transition-colors duration-300;
+  }
+  .dark .glass-card {
+    @apply bg-white/5 border-white/10;
+  }
+  .glass-pill {
+    @apply bg-black/5 border border-black/10 rounded-full backdrop-blur-md transition-colors duration-300;
+  }
+  .dark .glass-pill {
+    @apply bg-white/5 border-white/10;
+  }
+}
+
+/* Hide scrollbar for horizontal scroll areas */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}

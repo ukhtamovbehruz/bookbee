@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  name        String
+  email       String   @unique
+  avatar      String?
+  bee_points  Int      @default(0)
+  streak_days Int      @default(0)
+  created_at  DateTime @default(now())
+
+  votes     Vote[]
+  progress  Progress[]
+  bookmarks Bookmark[]
+  reviews   Review[]
+  rewards   Reward[]
+  roomsHost Room[]     @relation("RoomHost")
+}
+
+model Book {
+  id             String   @id @default(uuid())
+  title          String
+  author_id      String
+  cover_url      String
+  description    String?
+  genre          String
+  is_premium     Boolean  @default(false)
+  bee_score      Int      @default(0)
+  listener_count Int      @default(0)
+
+  chapters Chapter[]
+  votes    Vote[]
+  reviews  Review[]
+  rooms    Room[]
+}
+
+model Chapter {
+  id               String  @id @default(uuid())
+  book_id          String
+  title            String
+  audio_url        String
+  duration_seconds Int
+  order_index      Int
+  is_free          Boolean @default(false)
+
+  book Book @relation(fields: [book_id], references: [id])
+
+  progress  Progress[]
+  bookmarks Bookmark[]
+  rooms     Room[]
+}
+
+model Vote {
+  id         String   @id @default(uuid())
+  user_id    String
+  book_id    String
+  value      Int      // +1 or -1
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+  book Book @relation(fields: [book_id], references: [id])
+}
+
+model Progress {
+  id               String   @id @default(uuid())
+  user_id          String
+  chapter_id       String
+  position_seconds Int
+  completed        Boolean  @default(false)
+  updated_at       DateTime @updatedAt
+
+  user    User    @relation(fields: [user_id], references: [id])
+  chapter Chapter @relation(fields: [chapter_id], references: [id])
+}
+
+model Bookmark {
+  id               String  @id @default(uuid())
+  user_id          String
+  chapter_id       String
+  position_seconds Int
+  note             String?
+
+  user    User    @relation(fields: [user_id], references: [id])
+  chapter Chapter @relation(fields: [chapter_id], references: [id])
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  user_id    String
+  book_id    String
+  rating     Int
+  body       String
+  upvotes    Int      @default(0)
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+  book Book @relation(fields: [book_id], references: [id])
+}
+
+model Room {
+  id               String  @id @default(uuid())
+  host_id          String
+  book_id          String
+  chapter_id       String
+  position_seconds Int     @default(0)
+  is_live          Boolean @default(true)
+  invited_users    String[] // Array of user IDs
+
+  host    User    @relation("RoomHost", fields: [host_id], references: [id])
+  book    Book    @relation(fields: [book_id], references: [id])
+  chapter Chapter @relation(fields: [chapter_id], references: [id])
+}
+
+model Reward {
+  id            String   @id @default(uuid())
+  user_id       String
+  action_type   String
+  points_earned Int
+  created_at    DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+}
