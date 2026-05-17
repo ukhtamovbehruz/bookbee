@@ -5,7 +5,7 @@ import BookCard from '../components/BookCard';
 import { useTranslation } from 'react-i18next';
 import { getHomeFeed, upsertLibraryItem } from '../lib/supabaseData';
 
-const Home = ({ profile, isBootstrapping }) => {
+const Home = ({ profile }) => {
   const { t } = useTranslation();
   const [currentBanner, setCurrentBanner] = useState(0);
   const [feed, setFeed] = useState({ featured: [], trending: [], all: [] });
@@ -67,12 +67,6 @@ const Home = ({ profile, isBootstrapping }) => {
       {error && (
         <div className="mx-6 mt-6 rounded-2xl border border-coral/30 bg-coral/10 px-4 py-3 text-sm text-coral">
           {error}
-        </div>
-      )}
-
-      {!isBootstrapping && heroBanners.length === 0 && (
-        <div className="mx-6 mt-6 rounded-2xl border border-black/10 bg-black/5 px-4 py-3 text-sm text-midnight/70 dark:border-white/10 dark:bg-white/5 dark:text-parchment/70">
-          Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, run the SQL in `supabase/schema.sql`, then seed with `supabase/seed.sql`.
         </div>
       )}
 
@@ -140,7 +134,7 @@ const Home = ({ profile, isBootstrapping }) => {
           </div>
         ) : (
           <div className="w-full h-[400px] md:h-[450px] rounded-[2rem] flex items-center justify-center bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10">
-            <p className="text-midnight/50 dark:text-parchment/50">No featured banners available yet.</p>
+            <p className="text-midnight/50 dark:text-parchment/50">Featured titles will appear here as your catalog grows.</p>
           </div>
         )}
       </section>
@@ -165,7 +159,7 @@ const Home = ({ profile, isBootstrapping }) => {
           </div>
         ) : (
           <div className="glass-card p-6 text-center text-midnight/50 dark:text-parchment/50">
-            <p>Nothing currently playing. Seed a few books in Supabase to populate the feed.</p>
+            <p>Nothing currently playing. Your saved listening activity will show up here.</p>
           </div>
         )}
       </section>

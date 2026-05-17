@@ -4,7 +4,7 @@ import { Search, Hexagon, Flame, Moon, Sun } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 
-const NavBar = ({ isDark, toggleTheme, changeLanguage, currentLang, profilePic, profile, session, isSupabaseConfigured }) => {
+const NavBar = ({ isDark, toggleTheme, changeLanguage, currentLang, profilePic, profile, session }) => {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
@@ -29,7 +29,6 @@ const NavBar = ({ isDark, toggleTheme, changeLanguage, currentLang, profilePic, 
           <Link to="/" className="text-midnight dark:text-parchment hover:text-honey dark:hover:text-honey transition-colors">{t('home')}</Link>
           <Link to="/explore" className="hover:text-honey transition-colors">{t('explore')}</Link>
           <Link to="/library" className="hover:text-honey transition-colors">{t('library')}</Link>
-          <Link to="/admin" className="hover:text-honey transition-colors">Admin</Link>
         </div>
       </div>
 
@@ -86,7 +85,7 @@ const NavBar = ({ isDark, toggleTheme, changeLanguage, currentLang, profilePic, 
 
           <Link to="/profile" className="ml-2 flex items-center gap-2 rounded-full border border-black/20 dark:border-white/20 px-2 py-1 hover:scale-105 transition-transform">
             <span className="hidden lg:block text-xs font-semibold text-midnight/70 dark:text-parchment/70">
-              {session ? (profile?.displayName || 'Profile') : (isSupabaseConfigured ? 'Sign in' : 'Configure Supabase')}
+              {session ? (profile?.displayName || 'Profile') : 'Sign in'}
             </span>
             <span className="w-8 h-8 rounded-full overflow-hidden block">
               <img src={profilePic} alt="Profile" className="w-full h-full object-cover" />

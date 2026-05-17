@@ -7,7 +7,6 @@ import Explore from './pages/Explore';
 import Library from './pages/Library';
 import BookDetail from './pages/BookDetail';
 import Profile from './pages/Profile';
-import Admin from './pages/Admin';
 import AudioPlayer from './components/AudioPlayer';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { getSessionProfile } from './lib/supabaseData';
@@ -109,7 +108,6 @@ function App() {
           profilePic={profilePic}
           profile={profile}
           session={session}
-          isSupabaseConfigured={isSupabaseConfigured}
         />
         
         <main className="flex-1 overflow-y-auto z-10">
@@ -119,7 +117,6 @@ function App() {
             <Route path="/library" element={<Library profile={profile} session={session} />} />
             <Route path="/book/:id" element={<BookDetail profile={profile} />} />
             <Route path="/profile" element={<Profile key={profile?.id || 'guest'} profile={profile} session={session} refreshProfile={refreshProfile} />} />
-            <Route path="/admin" element={<Admin profile={profile} />} />
           </Routes>
         </main>
 
