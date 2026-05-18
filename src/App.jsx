@@ -3,11 +3,14 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import NavBar from './components/NavBar';
 import Home from './pages/Home';
+import HomeSignedInPreview from './pages/HomeSignedInPreview';
 import Explore from './pages/Explore';
 import Library from './pages/Library';
 import BookDetail from './pages/BookDetail';
+import Auth from './pages/Auth';
 import Profile from './pages/Profile';
-import AudioPlayer from './components/AudioPlayer';
+import { AudioPlayerProvider } from './context/AudioPlayerContext.jsx';
+import AppLayout from './components/AppLayout';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { getSessionProfile } from './lib/supabaseData';
 
@@ -17,7 +20,6 @@ function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
-  const profilePic = profile?.avatarUrl || 'https://i.pravatar.cc/300?u=bookbee';
 
   // Apply dark class to body so global styles work too
   useEffect(() => {
@@ -94,6 +96,7 @@ function App() {
   }
 
   return (
+    <AudioPlayerProvider>
     <Router>
       <div className="min-h-screen flex flex-col font-sans pb-24 relative overflow-hidden">
         {/* Glow Effects */}
@@ -105,24 +108,26 @@ function App() {
           toggleTheme={() => setIsDark(!isDark)}
           changeLanguage={(lng) => i18n.changeLanguage(lng)}
           currentLang={i18n.language}
-          profilePic={profilePic}
           profile={profile}
           session={session}
         />
         
-        <main className="flex-1 overflow-y-auto z-10">
-          <Routes>
-            <Route path="/" element={<Home session={session} profile={profile} isBootstrapping={isBootstrapping} />} />
-            <Route path="/explore" element={<Explore />} />
-            <Route path="/library" element={<Library profile={profile} session={session} />} />
-            <Route path="/book/:id" element={<BookDetail profile={profile} />} />
-            <Route path="/profile" element={<Profile key={profile?.id || 'guest'} profile={profile} session={session} refreshProfile={refreshProfile} />} />
-          </Routes>
-        </main>
-
-        <AudioPlayer />
+        <AppLayout>
+          <main className="flex-1 overflow-y-auto z-10">
+            <Routes>
+              <Route path="/" element={<Home session={session} profile={profile} isBootstrapping={isBootstrapping} />} />
+              <Route path="/preview/signed-in-home" element={<HomeSignedInPreview />} />
+              <Route path="/explore" element={<Explore session={session} profile={profile} />} />
+              <Route path="/library" element={<Library profile={profile} session={session} />} />
+              <Route path="/book/:id" element={<BookDetail profile={profile} />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/profile" element={<Profile key={profile?.id || 'guest'} profile={profile} session={session} refreshProfile={refreshProfile} />} />
+            </Routes>
+          </main>
+        </AppLayout>
       </div>
     </Router>
+    </AudioPlayerProvider>
   );
 }
 

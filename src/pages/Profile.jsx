@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Settings, Hexagon, Clock, BookOpen, User, Bell, Shield, LogOut, ChevronRight, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -65,14 +66,22 @@ const Profile = ({ profile, session, refreshProfile }) => {
         <div className="glass-card p-10 text-center">
           <h1 className="text-3xl font-bold text-midnight dark:text-parchment mb-3">{t('profile') || 'Profile'}</h1>
           <p className="text-midnight/60 dark:text-parchment/60 mb-8">
-            Sign in with Supabase Auth to sync your profile, library, progress, and admin permissions.
+            {t('auth_sign_in_desc')}
           </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link to="/auth" className="px-6 py-3 rounded-xl bg-forest text-white font-bold hover:bg-forest/90 transition-colors">
+              {t('auth_sign_in')}
+            </Link>
+            <Link to="/auth?mode=signup" className="px-6 py-3 rounded-xl border border-forest text-forest font-bold hover:bg-forest/10 transition-colors">
+              {t('auth_sign_up')}
+            </Link>
+          </div>
           <button
             type="button"
             onClick={() => signInWithGoogle().catch((nextError) => setError(nextError.message))}
-            className="px-6 py-3 rounded-xl bg-forest text-white font-bold hover:bg-forest/90 transition-colors"
+            className="mt-4 px-6 py-3 rounded-xl border border-black/10 dark:border-white/10 font-semibold hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
           >
-            Continue with Google
+            {t('auth_google')}
           </button>
           {error && <p className="mt-4 text-sm text-coral">{error}</p>}
         </div>

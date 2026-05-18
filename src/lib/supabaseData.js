@@ -336,6 +336,110 @@ async function createBook(profileId, payload) {
   return mapBook(data);
 }
 
+async function getDashboardData(profileId) {
+  ensureConfigured();
+
+  const [library, progressResult] = await Promise.all([
+    getMyLibrary(profileId),
+    supabase
+      .from('progress')
+      .select(
+        'position_seconds, completed, updated_at, chapter:chapters(id, title, duration_seconds, order_index, book_id, book:books(*, chapters(*)))'
+      )
+      .eq('profile_id', profileId)
+      .order('updated_at', { ascending: false })
+      .limit(1),
+  ]);
+
+  if (progressResult.error) {
+    throw progressResult.error;
+  }
+
+  const latestProgress = progressResult.data?.[0];
+  const currentlyReading = library.filter((item) => item.status === 'currently-reading');
+  const finished = library.filter((item) => item.status === 'finished');
+  const wantToListen = library.filter((item) => item.status === 'want-to-listen');
+
+  let continueListening = null;
+
+  if (latestProgress?.chapter?.book) {
+    const book = mapBook(latestProgress.chapter.book);
+    const chapter = book.chapters.find((item) => item.id === latestProgress.chapter.id) || book.chapters[0];
+    const durationSeconds = chapter?.durationSeconds || 1;
+    const progressPercent = Math.min(100, (latestProgress.position_seconds / durationSeconds) * 100);
+
+    continueListening = {
+      book,
+      chapter,
+      positionSeconds: latestProgress.position_seconds,
+      progressPercent,
+    };
+  } else if (currentlyReading[0]) {
+    const book = currentlyReading[0].book;
+    continueListening = {
+      book,
+      chapter: book.chapters[0],
+      positionSeconds: 0,
+      progressPercent: 0,
+    };
+  } else if (wantToListen[0]) {
+    const book = wantToListen[0].book;
+    continueListening = {
+      book,
+      chapter: book.chapters[0],
+      positionSeconds: 0,
+      progressPercent: 0,
+    };
+  }
+
+  return {
+    stats: {
+      libraryCount: library.length,
+      readingCount: currentlyReading.length,
+      finishedCount: finished.length,
+      wantCount: wantToListen.length,
+    },
+    continueListening,
+    libraryPreview: library.slice(0, 6).map((item) => ({ status: item.status, book: item.book })),
+  };
+}
+
+async function signUpWithEmail({ email, password, displayName }) {
+  ensureConfigured();
+
+  const { data, error } = await supabase.auth.signUp({
+    email: email.trim(),
+    password,
+    options: {
+      data: {
+        full_name: displayName?.trim() || email.split('@')[0],
+      },
+      emailRedirectTo: window.location.origin,
+    },
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+async function signInWithEmail({ email, password }) {
+  ensureConfigured();
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: email.trim(),
+    password,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
 async function signInWithGoogle() {
   ensureConfigured();
 
@@ -363,14 +467,17 @@ async function signOut() {
 export {
   createBook,
   getBookDetails,
+  getDashboardData,
   getHomeFeed,
   getMyLibrary,
   getPublicProfile,
   getSessionProfile,
   listBooks,
   saveProgress,
+  signInWithEmail,
   signInWithGoogle,
   signOut,
+  signUpWithEmail,
   updateMyProfile,
   uploadAvatar,
   upsertLibraryItem,

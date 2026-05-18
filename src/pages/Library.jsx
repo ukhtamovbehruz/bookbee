@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Settings, Hexagon, Flame, BookOpen, CheckCircle, Clock, Heart } from 'lucide-react';
 import BookCard from '../components/BookCard';
 import { useTranslation } from 'react-i18next';
@@ -61,7 +62,15 @@ const Library = ({ profile }) => {
     return (
       <div className="pb-12 px-6 pt-12">
         <div className="glass-card p-8 text-center text-midnight/70 dark:text-parchment/70">
-          Sign in with Google from the profile page to sync your library, progress, and saved books.
+          <p className="mb-6">{t('dashboard_sign_in_continue')}</p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link to="/auth" className="px-6 py-3 rounded-xl bg-forest text-white font-bold hover:bg-forest/90 transition-colors">
+              {t('auth_sign_in')}
+            </Link>
+            <Link to="/auth?mode=signup" className="px-6 py-3 rounded-xl border border-forest text-forest font-bold hover:bg-forest/10 transition-colors">
+              {t('auth_sign_up')}
+            </Link>
+          </div>
         </div>
       </div>
     );

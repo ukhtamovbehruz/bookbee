@@ -6,15 +6,21 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { listBooks } from '../lib/supabaseData';
 
-const Explore = () => {
+const Explore = ({ session, profile }) => {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const searchQuery = searchParams.get('q') || '';
   const [books, setBooks] = useState([]);
   const [error, setError] = useState('');
+  const isAuthenticated = Boolean(session && profile);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/auth?redirect=%2Fexplore', { replace: true });
+      return undefined;
+    }
+
     let isActive = true;
 
     listBooks(searchQuery)
@@ -32,7 +38,11 @@ const Explore = () => {
     return () => {
       isActive = false;
     };
-  }, [searchQuery]);
+  }, [isAuthenticated, navigate, searchQuery]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const handleSearchChange = (e) => {
     const val = e.target.value;
