@@ -27,6 +27,7 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => boolean;
   signOut: () => void;
   requestPasswordReset: (email: string) => void;
+  updateName: (name: string) => void;
 }
 
 const ACCOUNTS_KEY = "bookbee_accounts";
@@ -106,9 +107,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     toast.success(`Password reset instructions sent to ${email}.`);
   }, []);
 
+  const updateName = useCallback(
+    (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed || !user) return;
+      const accounts = readStorage<StoredAccount[]>(ACCOUNTS_KEY, []);
+      const nextAccounts = accounts.map((a) =>
+        a.email === user.email ? { ...a, name: trimmed } : a,
+      );
+      writeStorage(ACCOUNTS_KEY, nextAccounts);
+      const nextUser = { ...user, name: trimmed };
+      writeStorage(SESSION_KEY, nextUser);
+      setUser(nextUser);
+    },
+    [user],
+  );
+
   return (
     <AuthContext.Provider
-      value={{ user, isReady, signUp, signIn, signOut, requestPasswordReset }}
+      value={{
+        user,
+        isReady,
+        signUp,
+        signIn,
+        signOut,
+        requestPasswordReset,
+        updateName,
+      }}
     >
       {children}
     </AuthContext.Provider>

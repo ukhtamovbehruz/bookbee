@@ -1,5 +1,4 @@
-import { Hero } from "@/components/home/Hero";
-import { MarqueeBanner } from "@/components/home/MarqueeBanner";
+import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { ContinueListeningRail } from "@/components/home/ContinueListeningRail";
 import { TrendingBooksRail } from "@/components/home/TrendingBooksRail";
 import { CategoriesGrid } from "@/components/home/CategoriesGrid";
@@ -12,10 +11,7 @@ import { FadeInSection } from "@/components/shared/FadeInSection";
 export default function Home() {
   return (
     <div className="flex flex-col gap-16 pb-24 sm:gap-20">
-      <FadeInSection>
-        <Hero />
-      </FadeInSection>
-      <MarqueeBanner />
+      <HeroCarousel />
       <FadeInSection>
         <ContinueListeningRail />
       </FadeInSection>

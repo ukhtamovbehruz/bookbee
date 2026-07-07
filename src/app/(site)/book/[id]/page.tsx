@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { BookDetailsView } from "@/components/book/BookDetailsView";
-import { CustomBookGate } from "@/components/book/CustomBookGate";
+import { CatalogBookView } from "@/components/book/CatalogBookView";
 import { books, getBookById } from "@/lib/mock-data/books";
 
 export function generateStaticParams() {
@@ -14,7 +13,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const book = getBookById(id);
-  if (!book) return {};
+  if (!book) return { title: "Book — BookBee" };
   return {
     title: `${book.title} by ${book.author} — BookBee`,
     description: book.description,
@@ -27,8 +26,6 @@ export default async function BookDetailsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const book = getBookById(id);
-
-  if (book) return <BookDetailsView book={book} />;
-  return <CustomBookGate id={id} />;
+  const fallback = getBookById(id);
+  return <CatalogBookView id={id} fallback={fallback} />;
 }

@@ -43,6 +43,7 @@ export interface Collection {
   description: string;
   colorHex: string;
   bookIds: string[];
+  coverUrl?: string;
 }
 
 export interface ContinueListeningEntry {

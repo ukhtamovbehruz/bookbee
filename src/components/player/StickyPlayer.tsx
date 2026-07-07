@@ -11,7 +11,16 @@ export function StickyPlayer() {
   if (!currentBook) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 glass-strong">
+    <motion.div
+      initial={{ y: 80, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ type: "spring", stiffness: 260, damping: 30 }}
+      className="fixed inset-x-0 bottom-0 z-50 hairline-t glass-strong"
+    >
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent"
+      />
       <AnimatePresence mode="wait" initial={false}>
         {isExpanded ? (
           <motion.div
@@ -35,6 +44,6 @@ export function StickyPlayer() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }

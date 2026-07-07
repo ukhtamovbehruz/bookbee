@@ -6,6 +6,7 @@ import { Menu } from "lucide-react";
 import { Logo } from "@/components/layout/Logo";
 import { SearchCommandDialog } from "@/components/layout/SearchCommandDialog";
 import { UserMenu } from "@/components/layout/UserMenu";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { PremiumButton } from "@/components/layout/PremiumButton";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +29,7 @@ export function Navbar() {
   const { user } = useAuth();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-white/5 glass">
+    <header className="sticky top-0 z-40 w-full hairline-b glass">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
         <Logo />
 
@@ -49,6 +50,7 @@ export function Navbar() {
 
         <div className="flex flex-1 items-center justify-end gap-2 sm:gap-3">
           <SearchCommandDialog />
+          <ThemeToggle />
           <PremiumButton className="hidden sm:inline-flex" />
           <div className="hidden sm:flex items-center gap-2">
             {user ? (

@@ -1,10 +1,30 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { SectionHeading } from "@/components/shared/SectionHeading";
-import { collections } from "@/lib/mock-data/collections";
-import { getBookById } from "@/lib/mock-data/books";
+import { collections as seedCollections } from "@/lib/mock-data/collections";
+import { getAllCollections, onCatalogChanged } from "@/lib/mock-data/curation";
+import { getCatalogBookById } from "@/lib/mock-data/catalog";
+import type { Collection } from "@/lib/types";
+
+function collectionCover(collection: Collection): string {
+  return (
+    collection.coverUrl?.trim() ||
+    `https://picsum.photos/seed/collection-${collection.id}/600/300`
+  );
+}
 
 export function FeaturedCollections() {
+  const [collections, setCollections] = useState<Collection[]>(seedCollections);
+
+  useEffect(() => {
+    const refresh = () => setCollections(getAllCollections());
+    refresh();
+    return onCatalogChanged(refresh);
+  }, []);
+
   return (
     <section id="collections" className="mx-auto max-w-7xl scroll-mt-20 px-4 sm:px-6 lg:px-8">
       <SectionHeading title="Featured Collections" className="mb-5" />
@@ -12,8 +32,8 @@ export function FeaturedCollections() {
         {collections.map((collection) => {
           const covers = collection.bookIds
             .slice(0, 3)
-            .map((id) => getBookById(id))
-            .filter(Boolean);
+            .map((id) => getCatalogBookById(id))
+            .filter((b): b is NonNullable<typeof b> => Boolean(b));
 
           return (
             <Link
@@ -22,7 +42,7 @@ export function FeaturedCollections() {
               className="group relative flex h-40 overflow-hidden rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Image
-                src={`https://picsum.photos/seed/collection-${collection.id}/600/300`}
+                src={collectionCover(collection)}
                 alt=""
                 fill
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
@@ -37,14 +57,14 @@ export function FeaturedCollections() {
 
               <div className="relative z-10 flex flex-1 flex-col justify-between p-5">
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground">
+                  <h3 className="text-lg font-semibold text-white">
                     {collection.title}
                   </h3>
-                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                  <p className="mt-1 line-clamp-2 text-sm text-white/70">
                     {collection.description}
                   </p>
                 </div>
-                <span className="text-xs font-medium text-muted-foreground">
+                <span className="text-xs font-medium text-white/60">
                   {collection.bookIds.length} books
                 </span>
               </div>
@@ -53,12 +73,12 @@ export function FeaturedCollections() {
                 <div className="flex -space-x-8">
                   {covers.map((book, i) => (
                     <div
-                      key={book!.id}
+                      key={book.id}
                       className="relative aspect-2/3 w-16 overflow-hidden rounded-lg border-2 border-card shadow-lg transition-transform duration-300 group-hover:-translate-y-1"
                       style={{ zIndex: covers.length - i }}
                     >
                       <Image
-                        src={book!.coverUrl}
+                        src={book.coverUrl}
                         alt=""
                         fill
                         sizes="64px"

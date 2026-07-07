@@ -12,12 +12,19 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { useGuardedPlay } from "@/hooks/useGuardedPlay";
+import { useCatalog } from "@/hooks/useCatalog";
 import { getMostPopularBooks } from "@/lib/mock-data/books";
 import { formatCount, formatDuration } from "@/lib/utils";
+import type { Book } from "@/lib/types";
+
+const POPULAR = (books: Book[]) =>
+  [...books]
+    .sort((a, b) => b.rating * b.ratingCount - a.rating * a.ratingCount)
+    .slice(0, 10);
 
 export function MostPopularCarousel() {
   const guardedPlay = useGuardedPlay();
-  const popular = getMostPopularBooks(10);
+  const popular = useCatalog(POPULAR, getMostPopularBooks(10));
 
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Flame, Library, LogOut, Shield } from "lucide-react";
+import { Flame, Library, LogOut, UserRound } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -46,6 +46,12 @@ export function UserMenu() {
         <DropdownMenuLabel className="truncate">{user.email}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
+          <Link href="/profile">
+            <UserRound className="size-4" />
+            Profile & Settings
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
           <Link href="/library">
             <Library className="size-4" />
             My Library
@@ -55,12 +61,6 @@ export function UserMenu() {
           <Link href="/library#streak">
             <Flame className="size-4" />
             Listening Streak
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/admin/login">
-            <Shield className="size-4" />
-            Admin
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

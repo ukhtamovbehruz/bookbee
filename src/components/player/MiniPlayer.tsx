@@ -5,10 +5,12 @@ import { ChevronUp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PlayerControls } from "@/components/player/PlayerControls";
 import { ProgressBar } from "@/components/player/ProgressBar";
+import { Equalizer } from "@/components/player/Equalizer";
 import { useAudioPlayer } from "@/components/player/AudioPlayerProvider";
 
 export function MiniPlayer() {
-  const { currentBook, currentChapter, setExpanded, closePlayer } = useAudioPlayer();
+  const { currentBook, currentChapter, isPlaying, setExpanded, closePlayer } =
+    useAudioPlayer();
 
   if (!currentBook) return null;
 
@@ -28,6 +30,9 @@ export function MiniPlayer() {
             sizes="48px"
             className="object-cover"
           />
+          <div className="absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/60 to-transparent pb-1">
+            <Equalizer playing={isPlaying} className="h-3" />
+          </div>
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{currentBook.title}</p>

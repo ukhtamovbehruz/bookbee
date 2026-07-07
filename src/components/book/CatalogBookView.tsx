@@ -3,15 +3,24 @@
 import { useEffect, useState } from "react";
 import { BookDetailsView } from "@/components/book/BookDetailsView";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCustomBookById } from "@/lib/mock-data/custom-books";
+import { getCatalogBookById, onCatalogChanged } from "@/lib/mock-data/catalog";
 import type { Book } from "@/lib/types";
 import BookNotFound from "@/app/(site)/book/[id]/not-found";
 
-export function CustomBookGate({ id }: { id: string }) {
-  const [book, setBook] = useState<Book | null | undefined>(undefined);
+export function CatalogBookView({
+  id,
+  fallback,
+}: {
+  id: string;
+  fallback?: Book;
+}) {
+  const [book, setBook] = useState<Book | null | undefined>(fallback);
 
   useEffect(() => {
-    setBook(getCustomBookById(id) ?? null);
+    const refresh = () => setBook(getCatalogBookById(id) ?? fallback ?? null);
+    refresh();
+    return onCatalogChanged(refresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   if (book === undefined) {

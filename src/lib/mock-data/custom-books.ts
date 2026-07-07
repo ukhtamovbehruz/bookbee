@@ -13,9 +13,10 @@ export interface NewBookInput {
   description: string;
   categoryIds: string[];
   language: Book["language"];
-  hours: number;
+  durationSec: number;
   isPremium: boolean;
   coverUrl?: string;
+  audioUrl?: string;
 }
 
 function slugify(title: string): string {
@@ -44,8 +45,10 @@ export function addCustomBook(input: NewBookInput): Book {
     suffix += 1;
   }
 
-  const durationSec = Math.round(input.hours * 3600);
-  const chapterCount = Math.max(4, Math.round(input.hours));
+  const durationSec = Math.max(60, Math.round(input.durationSec));
+  const chapterCount = Math.max(4, Math.round(durationSec / 3600));
+  const audioUrl =
+    input.audioUrl?.trim() || SAMPLE_AUDIO_URLS[existing.length % SAMPLE_AUDIO_URLS.length];
 
   const book: Book = {
     id,
@@ -64,8 +67,8 @@ export function addCustomBook(input: NewBookInput): Book {
     isPremium: input.isPremium,
     isNew: true,
     publishedAt: new Date().toISOString(),
-    audioSampleUrl: SAMPLE_AUDIO_URLS[existing.length % SAMPLE_AUDIO_URLS.length],
-    chapters: generateChapters(id, durationSec, chapterCount),
+    audioSampleUrl: audioUrl,
+    chapters: generateChapters(id, durationSec, chapterCount, input.audioUrl?.trim() || undefined),
   };
 
   writeStorage(CUSTOM_BOOKS_KEY, [...existing, book]);

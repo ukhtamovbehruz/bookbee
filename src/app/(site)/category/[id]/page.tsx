@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { BookCard } from "@/components/book/BookCard";
+import { CategoryBooksGrid } from "@/components/book/CategoryBooksGrid";
 import { categories } from "@/lib/mock-data/categories";
 import { getBooksByCategory } from "@/lib/mock-data/books";
 
@@ -33,15 +33,7 @@ export default async function CategoryPage({
         </span>
       </div>
 
-      {books.length === 0 ? (
-        <p className="text-muted-foreground">No books in this category yet.</p>
-      ) : (
-        <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-          {books.map((book) => (
-            <BookCard key={book.id} book={book} width="w-full" />
-          ))}
-        </div>
-      )}
+      <CategoryBooksGrid categoryId={category.id} initial={books} />
     </div>
   );
 }

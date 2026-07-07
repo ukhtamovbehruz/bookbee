@@ -1,10 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
-import { Headphones, Sparkles, Star } from "lucide-react";
+import { Headphones, Quote, Sparkles, Star } from "lucide-react";
 import { Logo } from "@/components/layout/Logo";
+import { books } from "@/lib/mock-data/books";
 import type { ReactNode } from "react";
+
+const SHOWCASE = [
+  books.find((b) => b.id === "atomic-habits"),
+  books.find((b) => b.id === "sapiens"),
+  books.find((b) => b.id === "1984"),
+].filter((b): b is NonNullable<typeof b> => Boolean(b));
 
 export function AuthSplitLayout({
   mode,
@@ -32,22 +40,40 @@ export function AuthSplitLayout({
         <Logo />
       </div>
 
+      {/* floating book covers */}
+      <div className="relative z-10 my-8 flex items-end justify-center gap-4">
+        {SHOWCASE.map((book, i) => (
+          <motion.div
+            key={book.id}
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: i === 1 ? -20 : 0 }}
+            transition={{ duration: 0.6, delay: 0.2 + i * 0.12 }}
+            className="relative aspect-2/3 w-28 overflow-hidden rounded-xl border border-white/10 shadow-2xl shadow-black/50"
+            style={{ rotate: `${i === 0 ? -6 : i === 2 ? 6 : 0}deg` }}
+          >
+            <Image src={book.coverUrl} alt="" fill sizes="112px" className="object-cover" />
+          </motion.div>
+        ))}
+      </div>
+
       <div className="relative z-10 max-w-sm">
-        <span className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-sm font-semibold text-primary">
-          <Sparkles className="size-4" />
-          Join 200K+ listeners
-        </span>
-        <h2 className="mt-5 text-3xl font-bold leading-tight tracking-tight text-foreground">
-          Your next favorite book is waiting.
-        </h2>
-        <p className="mt-3 text-muted-foreground">
-          Stream thousands of audiobooks, pick up exactly where you left off,
-          and build a listening habit that sticks.
-        </p>
-        <div className="mt-6 flex items-center gap-4 text-sm text-muted-foreground">
+        <div className="glass-strong rounded-2xl p-5">
+          <Quote className="size-5 text-primary" />
+          <p className="mt-2 text-sm text-white/90">
+            &ldquo;A reader lives a thousand lives before he dies. The man who
+            never reads lives only one.&rdquo;
+          </p>
+          <p className="mt-2 text-xs text-white/60">— George R.R. Martin</p>
+        </div>
+
+        <div className="mt-6 flex items-center gap-4 text-sm text-white/70">
+          <span className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 font-semibold text-primary">
+            <Sparkles className="size-3.5" />
+            200K+ listeners
+          </span>
           <span className="flex items-center gap-1">
             <Star className="size-4 fill-primary text-primary" />
-            4.8 average rating
+            4.8 rating
           </span>
           <span className="flex items-center gap-1">
             <Headphones className="size-4" />

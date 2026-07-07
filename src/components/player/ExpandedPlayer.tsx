@@ -8,10 +8,13 @@ import { PlayerControls } from "@/components/player/PlayerControls";
 import { ProgressBar } from "@/components/player/ProgressBar";
 import { VolumeControl } from "@/components/player/VolumeControl";
 import { SpeedControl } from "@/components/player/SpeedControl";
+import { Equalizer } from "@/components/player/Equalizer";
 import { useAudioPlayer } from "@/components/player/AudioPlayerProvider";
+import { cn } from "@/lib/utils";
 
 export function ExpandedPlayer() {
-  const { currentBook, currentChapter, setExpanded, closePlayer } = useAudioPlayer();
+  const { currentBook, currentChapter, isPlaying, setExpanded, closePlayer } =
+    useAudioPlayer();
 
   if (!currentBook) return null;
 
@@ -40,7 +43,12 @@ export function ExpandedPlayer() {
       </div>
 
       <div className="mx-auto flex w-full max-w-md flex-col items-center gap-6 text-center">
-        <div className="relative aspect-2/3 w-48 sm:w-56 shrink-0 overflow-hidden rounded-2xl shadow-2xl shadow-black/60">
+        <div
+          className={cn(
+            "relative aspect-2/3 w-48 sm:w-56 shrink-0 overflow-hidden rounded-2xl shadow-2xl shadow-black/60 transition-transform",
+            isPlaying ? "now-playing-glow scale-100" : "scale-[0.98]",
+          )}
+        >
           <Image
             src={currentBook.coverUrl}
             alt=""
@@ -51,13 +59,16 @@ export function ExpandedPlayer() {
           />
         </div>
         <div>
-          <Link
-            href={`/book/${currentBook.id}`}
-            onClick={() => setExpanded(false)}
-            className="text-lg font-semibold hover:underline"
-          >
-            {currentBook.title}
-          </Link>
+          <div className="flex items-center justify-center gap-2">
+            <Link
+              href={`/book/${currentBook.id}`}
+              onClick={() => setExpanded(false)}
+              className="text-lg font-semibold hover:underline"
+            >
+              {currentBook.title}
+            </Link>
+            <Equalizer playing={isPlaying} className="h-3.5" />
+          </div>
           <p className="text-sm text-muted-foreground">{currentBook.author}</p>
           {currentChapter && (
             <p className="mt-1 text-xs text-muted-foreground">

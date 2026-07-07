@@ -37,7 +37,7 @@ const SOCIAL_LINKS = [
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/5 bg-card/40 pb-28">
+    <footer className="hairline-t bg-card/40 pb-28">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
           <div className="col-span-2 sm:col-span-1">
@@ -106,7 +106,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 flex flex-col items-center gap-2 border-t border-white/5 pt-6 text-center text-xs text-muted-foreground sm:flex-row sm:justify-between">
+        <div className="mt-10 flex flex-col items-center gap-2 hairline-t pt-6 text-center text-xs text-muted-foreground sm:flex-row sm:justify-between">
           <span>© {new Date().getFullYear()} BookBee. All rights reserved.</span>
           <span>Tashkent, Uzbekistan</span>
         </div>

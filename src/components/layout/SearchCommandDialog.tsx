@@ -15,12 +15,15 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { books } from "@/lib/mock-data/books";
+import { getAllBooks, onCatalogChanged } from "@/lib/mock-data/catalog";
 import { categories } from "@/lib/mock-data/categories";
 import { filterBooks } from "@/lib/search";
+import type { Book } from "@/lib/types";
 
 export function SearchCommandDialog() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [catalog, setCatalog] = useState<Book[]>(books);
   const router = useRouter();
 
   useEffect(() => {
@@ -34,7 +37,13 @@ export function SearchCommandDialog() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const results = useMemo(() => filterBooks(query, books).slice(0, 8), [query]);
+  useEffect(() => {
+    const refresh = () => setCatalog(getAllBooks());
+    refresh();
+    return onCatalogChanged(refresh);
+  }, []);
+
+  const results = useMemo(() => filterBooks(query, catalog).slice(0, 8), [query, catalog]);
 
   function goToBook(id: string) {
     setOpen(false);

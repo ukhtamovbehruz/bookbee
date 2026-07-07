@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { AudioPlayerProvider } from "@/components/player/AudioPlayerProvider";
 import { AuthProvider } from "@/context/AuthProvider";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -30,17 +31,25 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <TooltipProvider delayDuration={200}>
-          <AuthProvider>
-            <AudioPlayerProvider>
-              {children}
-              <Toaster position="bottom-right" />
-            </AudioPlayerProvider>
-          </AuthProvider>
-        </TooltipProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem={false}
+          disableTransitionOnChange
+        >
+          <TooltipProvider delayDuration={200}>
+            <AuthProvider>
+              <AudioPlayerProvider>
+                {children}
+                <Toaster position="bottom-right" />
+              </AudioPlayerProvider>
+            </AuthProvider>
+          </TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

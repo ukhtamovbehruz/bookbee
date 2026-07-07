@@ -1,10 +1,17 @@
+"use client";
+
 import { SectionHeading } from "@/components/shared/SectionHeading";
 import { ScrollRail } from "@/components/shared/ScrollRail";
 import { BookCard } from "@/components/book/BookCard";
+import { useCatalog } from "@/hooks/useCatalog";
 import { getTrendingBooks } from "@/lib/mock-data/books";
+import type { Book } from "@/lib/types";
+
+const TREND = (books: Book[]) =>
+  [...books].sort((a, b) => b.listenerCount - a.listenerCount).slice(0, 14);
 
 export function TrendingBooksRail() {
-  const trending = getTrendingBooks(14);
+  const trending = useCatalog(TREND, getTrendingBooks(14));
 
   return (
     <section id="trending" className="mx-auto max-w-7xl scroll-mt-20 px-4 sm:px-6 lg:px-8">
