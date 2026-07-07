@@ -5,13 +5,16 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 import {
-  Activity,
+  Award,
   BookOpen,
+  Headphones,
   LayoutGrid,
   Library as LibraryIcon,
   LogOut,
   Pencil,
+  PlayCircle,
   Plus,
   RotateCcw,
   Search,
@@ -25,15 +28,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { LogoIcon } from "@/components/layout/LogoIcon";
-import { MiniAreaChart, DonutChart } from "@/components/admin/Charts";
+import { DonutChart } from "@/components/admin/Charts";
 import { BookFormDialog } from "@/components/admin/BookFormDialog";
 import { CollectionFormDialog } from "@/components/admin/CollectionFormDialog";
+import { CountUp } from "@/components/shared/CountUp";
 import { useAdminSession } from "@/hooks/useAdminSession";
 import { categories } from "@/lib/mock-data/categories";
-import { getAdminBooks, getAllBooks, deleteBook, saveBookEdit } from "@/lib/mock-data/catalog";
+import { getAdminBooks, deleteBook, saveBookEdit } from "@/lib/mock-data/catalog";
 import { getAllCollections } from "@/lib/mock-data/curation";
+import { getPlatformMetrics, timeAgo } from "@/lib/metrics";
 import { readStorage } from "@/lib/local-storage";
-import { cn, formatCount, formatDuration } from "@/lib/utils";
+import { cn, formatDuration } from "@/lib/utils";
 import type { Book, Collection } from "@/lib/types";
 
 type Section = "insights" | "library" | "users" | "curation" | "settings";
@@ -46,7 +51,12 @@ const NAV: { id: Section; label: string; icon: typeof LayoutGrid }[] = [
   { id: "settings", label: "Settings", icon: SettingsIcon },
 ];
 
-const TREND = [22, 28, 26, 34, 40, 38, 52, 60, 55, 68, 64, 72, 70, 78, 74, 82];
+const ACTIVITY_ICON = {
+  title: BookOpen,
+  library: LibraryIcon,
+  certificate: Award,
+  rating: Star,
+} as const;
 
 export default function AdminDashboardPage() {
   const { isAdmin, isReady, logout } = useAdminSession();
@@ -69,11 +79,6 @@ export default function AdminDashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [isAdmin, tick],
   );
-  const catalog = useMemo(
-    () => (isAdmin ? getAllBooks() : []),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isAdmin, tick],
-  );
   const collections = useMemo(
     () => (isAdmin ? getAllCollections() : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -82,45 +87,25 @@ export default function AdminDashboardPage() {
 
   if (!isReady || !isAdmin) return null;
 
-  const totalListeners = catalog.reduce((s, b) => s + b.listenerCount, 0);
-  const newThisWeek = catalog.filter((b) => b.isNew).length;
-  const avgRating =
-    catalog.length > 0
-      ? (catalog.reduce((s, b) => s + b.rating, 0) / catalog.length).toFixed(2)
-      : "0";
-
-  const genreSegments = categories
-    .map((c) => ({
-      label: c.name,
-      value: catalog.filter((b) => b.categoryIds.includes(c.id)).length,
-      color: c.colorHex,
-    }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 4);
-  const topGenre = genreSegments[0];
+  const metrics = getPlatformMetrics();
+  const topGenre = metrics.genreDistribution[0];
+  const totalGenreTitles = metrics.genreDistribution.reduce((s, g) => s + g.value, 0);
   const topShare =
-    genreSegments.length > 0
-      ? Math.round(
-          (topGenre.value / genreSegments.reduce((s, g) => s + g.value, 0)) * 100,
-        )
+    topGenre && totalGenreTitles > 0
+      ? Math.round((topGenre.value / totalGenreTitles) * 100)
       : 0;
 
-  const accounts = readStorage<{ name: string; email: string }[]>("bookbee_accounts", []);
-  const users = [
-    ...accounts,
-    { name: "Alexander Thorne", email: "alexander.t@bookbee.co" },
-    { name: "Sarah Chen", email: "sarah.chen@bookbee.co" },
-  ];
+  const users = readStorage<{ name: string; email: string }[]>("bookbee_accounts", []);
 
   const filteredBooks = adminBooks.filter((b) =>
     `${b.title} ${b.author}`.toLowerCase().includes(query.trim().toLowerCase()),
   );
 
   const STATS = [
-    { label: "Active Listeners", value: formatCount(totalListeners), delta: "+12%", data: TREND },
-    { label: "Total Titles", value: `${catalog.length}`, delta: `+${newThisWeek}`, data: TREND.map((d) => d * 0.8) },
-    { label: "Avg Rating", value: avgRating, delta: "Optimal", data: TREND.map((d) => 60 + (d % 12)) },
-    { label: "New This Week", value: `${newThisWeek}`, delta: "New", data: TREND.map((d) => d * 0.6) },
+    { label: "Total Plays", value: metrics.totalPlays, decimals: 0, icon: PlayCircle },
+    { label: "Registered Users", value: metrics.registeredUsers, decimals: 0, icon: UsersIcon },
+    { label: "Total Titles", value: metrics.totalTitles, decimals: 0, icon: BookOpen },
+    { label: "Certificates Issued", value: metrics.certificatesIssued, decimals: 0, icon: Award },
   ];
 
   return (
@@ -220,83 +205,139 @@ export default function AdminDashboardPage() {
         </div>
 
         {section === "insights" && (
-          <div className="max-w-5xl space-y-6">
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
+            className="max-w-5xl space-y-6"
+          >
             <div>
               <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Platform Insights</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Real-time overview of BookBee&apos;s ecosystem health and growth.
+                Live metrics from real activity on BookBee. Numbers grow as members
+                sign up, listen, and rate.
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {STATS.map((stat) => (
-                <div key={stat.label} className="glass rounded-2xl p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">{stat.label}</span>
-                    <Badge variant="secondary" className="text-[10px]">
-                      {stat.delta}
-                    </Badge>
-                  </div>
-                  <p className="mt-2 text-2xl font-bold">{stat.value}</p>
-                  <div className="mt-2 h-8">
-                    <MiniAreaChart data={stat.data} height={32} />
-                  </div>
-                </div>
-              ))}
+              {STATS.map((stat) => {
+                const Icon = stat.icon;
+                return (
+                  <motion.div
+                    key={stat.label}
+                    variants={{
+                      hidden: { opacity: 0, y: 16 },
+                      visible: { opacity: 1, y: 0 },
+                    }}
+                    className="glass rounded-2xl p-5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">{stat.label}</span>
+                      <Icon className="size-4 text-primary" />
+                    </div>
+                    <p className="mt-3 text-3xl font-bold tabular-nums">
+                      <CountUp value={stat.value} decimals={stat.decimals} />
+                    </p>
+                  </motion.div>
+                );
+              })}
             </div>
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-              <div className="glass rounded-2xl p-5 lg:col-span-2">
+              <motion.div
+                variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
+                className="glass rounded-2xl p-5 lg:col-span-2"
+              >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="font-semibold">Listening Trends</h2>
-                    <p className="text-xs text-muted-foreground">Hourly listener engagement</p>
+                    <h2 className="font-semibold">Most Played Titles</h2>
+                    <p className="text-xs text-muted-foreground">Ranked by real play count</p>
                   </div>
-                  <Badge variant="secondary">Last 24 hours</Badge>
+                  <Headphones className="size-4 text-muted-foreground" />
                 </div>
-                <div className="mt-4 h-40">
-                  <MiniAreaChart data={TREND} />
-                </div>
-              </div>
+                {metrics.mostPlayed.length === 0 ? (
+                  <div className="mt-6 flex flex-col items-center justify-center gap-2 py-10 text-center">
+                    <PlayCircle className="size-8 text-muted-foreground/50" />
+                    <p className="text-sm text-muted-foreground">
+                      No listening activity yet.
+                    </p>
+                    <p className="text-xs text-muted-foreground/70">
+                      Play counts appear here once members start listening.
+                    </p>
+                  </div>
+                ) : (
+                  <ol className="mt-4 space-y-2">
+                    {metrics.mostPlayed.map((row, i) => {
+                      const max = metrics.mostPlayed[0].plays || 1;
+                      return (
+                        <li key={row.book.id} className="flex items-center gap-3">
+                          <span className="w-4 text-sm font-semibold text-muted-foreground">
+                            {i + 1}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{row.book.title}</p>
+                            <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                              <div
+                                className="h-full rounded-full bg-primary"
+                                style={{ width: `${(row.plays / max) * 100}%` }}
+                              />
+                            </div>
+                          </div>
+                          <span className="text-sm tabular-nums text-muted-foreground">
+                            {row.plays}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                )}
+              </motion.div>
 
-              <div className="glass rounded-2xl p-5">
-                <h2 className="font-semibold">Genre Popularity</h2>
-                <p className="text-xs text-muted-foreground">Titles by category</p>
+              <motion.div
+                variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
+                className="glass rounded-2xl p-5"
+              >
+                <h2 className="font-semibold">Catalog by Genre</h2>
+                <p className="text-xs text-muted-foreground">Titles per category</p>
                 <div className="mt-4">
                   <DonutChart
-                    segments={genreSegments}
+                    segments={metrics.genreDistribution}
                     centerLabel={`${topShare}%`}
                     centerSub={topGenre?.label}
                   />
                 </div>
-              </div>
+              </motion.div>
             </div>
 
-            <div className="glass rounded-2xl p-5">
+            <motion.div
+              variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0 } }}
+              className="glass rounded-2xl p-5"
+            >
               <h2 className="font-semibold">Recent Activity</h2>
-              <div className="mt-3 divide-y divide-border text-sm">
-                {[
-                  { icon: BookOpen, text: "New title indexed in the catalog", time: "12 mins ago", status: "Live" },
-                  { icon: Star, text: "A listener left a 5-star rating", time: "1 hour ago", status: "New" },
-                  { icon: Activity, text: "Listening trends refreshed", time: "3 hours ago", status: "Auto" },
-                ].map((row) => {
-                  const Icon = row.icon;
-                  return (
-                    <div key={row.text} className="flex items-center gap-3 py-3">
-                      <span className="flex size-8 items-center justify-center rounded-lg bg-primary/15 text-primary">
-                        <Icon className="size-4" />
-                      </span>
-                      <span className="flex-1">{row.text}</span>
-                      <span className="text-xs text-muted-foreground">{row.time}</span>
-                      <Badge variant="secondary" className="text-[10px]">
-                        {row.status}
-                      </Badge>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+              {metrics.recentActivity.length === 0 ? (
+                <p className="mt-4 py-6 text-center text-sm text-muted-foreground">
+                  No activity yet — new titles, saves, and certificates will show up here.
+                </p>
+              ) : (
+                <div className="mt-3 divide-y divide-border text-sm">
+                  {metrics.recentActivity.map((row) => {
+                    const Icon = ACTIVITY_ICON[row.kind];
+                    return (
+                      <div key={row.id} className="flex items-center gap-3 py-3">
+                        <span className="flex size-8 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                          <Icon className="size-4" />
+                        </span>
+                        <span className="flex-1">{row.text}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {timeAgo(row.ts)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
         )}
 
         {section === "library" && (
@@ -456,20 +497,32 @@ export default function AdminDashboardPage() {
               <h1 className="text-2xl font-bold tracking-tight">Users</h1>
               <p className="text-sm text-muted-foreground">{users.length} members</p>
             </div>
-            <div className="glass divide-y divide-border rounded-2xl">
-              {users.map((u, i) => (
-                <div key={`${u.email}-${i}`} className="flex items-center gap-3 p-4">
-                  <span className="flex size-9 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
-                    {u.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{u.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+            {users.length === 0 ? (
+              <div className="glass rounded-2xl p-10 text-center">
+                <UsersIcon className="mx-auto size-8 text-muted-foreground/50" />
+                <p className="mt-3 text-sm text-muted-foreground">
+                  No registered members yet.
+                </p>
+                <p className="text-xs text-muted-foreground/70">
+                  Accounts appear here as people sign up.
+                </p>
+              </div>
+            ) : (
+              <div className="glass divide-y divide-border rounded-2xl">
+                {users.map((u, i) => (
+                  <div key={`${u.email}-${i}`} className="flex items-center gap-3 p-4">
+                    <span className="flex size-9 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
+                      {u.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{u.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+                    </div>
+                    <Badge variant="secondary" className="text-[10px]">Listener</Badge>
                   </div>
-                  <Badge variant="secondary" className="text-[10px]">Listener</Badge>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

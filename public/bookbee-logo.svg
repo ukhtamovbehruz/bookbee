@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <defs>
+    <!-- Chap shakl uchun original gradient -->
+    <linearGradient id="gradient_chap" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#228c7f"/>
+      <stop offset="100%" stop-color="#1b5a64"/>
+    </linearGradient>
+    
+    <!-- O'rta shakl uchun original gradient -->
+    <linearGradient id="gradient_orta" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4caf50"/>
+      <stop offset="100%" stop-color="#1b7254"/>
+    </linearGradient>
+    
+    <!-- O'ng shakl uchun original gradient -->
+    <linearGradient id="gradient_ong" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#aacc33"/>
+      <stop offset="100%" stop-color="#669922"/>
+    </linearGradient>
+  </defs>
+  
+  <g transform="translate(45, 25)">
+    <!-- Chap (ko'k-yashil) element - original egri chiziq bilan -->
+    <path d="M 180,45 
+             C 135,45 112,110 112,270 
+             C 112,365 112,390 112,410 
+             C 130,360 155,335 180,315 Z" 
+          fill="url(#gradient_chap)" />
+    
+    <!-- O'rta (yashil) element - original pastki qismi va og'ish burchagi bilan -->
+    <path d="M 198,130 
+             L 303,120 
+             L 303,385 
+             C 260,395 210,405 120,475 
+             C 150,430 180,380 198,300 Z" 
+          fill="url(#gradient_orta)" />
+    
+    <!-- O'ng (och yashil) element - original "quyruq" qismi bilan -->
+    <path d="M 320,175 
+             L 348,178 
+             L 348,455 
+             C 310,425 240,430 175,445 
+             C 240,435 295,410 320,365 Z" 
+          fill="url(#gradient_ong)" />
+  </g>
+</svg>

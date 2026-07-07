@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
   BellRing,
@@ -20,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { CountUp } from "@/components/shared/CountUp";
 import { useAuth } from "@/context/AuthProvider";
 import { getStreak } from "@/lib/streak";
 import { getLibraryEntries } from "@/lib/library";
@@ -144,25 +146,37 @@ export default function ProfilePage() {
 
         {/* right column */}
         <div className="flex flex-col gap-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={{ visible: { transition: { staggerChildren: 0.08 } } }}
+            className="grid grid-cols-1 gap-4 sm:grid-cols-3"
+          >
             {STAT_CARDS.map((stat) => {
               const Icon = stat.icon;
               return (
-                <div key={stat.label} className="glass rounded-2xl p-5">
+                <motion.div
+                  key={stat.label}
+                  variants={{
+                    hidden: { opacity: 0, y: 16 },
+                    visible: { opacity: 1, y: 0 },
+                  }}
+                  className="glass rounded-2xl p-5"
+                >
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">{stat.label}</span>
                     <Icon className="size-4 text-primary" />
                   </div>
-                  <p className="mt-2 text-3xl font-bold">
-                    {stat.value}
+                  <p className="mt-2 text-3xl font-bold tabular-nums">
+                    <CountUp value={stat.value} />
                     <span className="ml-1 text-sm font-normal text-muted-foreground">
                       {stat.unit}
                     </span>
                   </p>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
 
           {tab === "account" && (
             <div className="glass rounded-2xl p-6">
