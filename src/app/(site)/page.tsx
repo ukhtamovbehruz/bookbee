@@ -1,4 +1,5 @@
 import { Hero } from "@/components/home/Hero";
+import { MarqueeBanner } from "@/components/home/MarqueeBanner";
 import { ContinueListeningRail } from "@/components/home/ContinueListeningRail";
 import { TrendingBooksRail } from "@/components/home/TrendingBooksRail";
 import { CategoriesGrid } from "@/components/home/CategoriesGrid";
@@ -14,6 +15,7 @@ export default function Home() {
       <FadeInSection>
         <Hero />
       </FadeInSection>
+      <MarqueeBanner />
       <FadeInSection>
         <ContinueListeningRail />
       </FadeInSection>

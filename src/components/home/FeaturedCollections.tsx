@@ -20,15 +20,18 @@ export function FeaturedCollections() {
               key={collection.id}
               href={`/collection/${collection.id}`}
               className="group relative flex h-40 overflow-hidden rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              style={{
-                background: `linear-gradient(135deg, ${collection.colorHex}33, transparent)`,
-              }}
             >
-              <div className="absolute inset-0 bg-card" />
+              <Image
+                src={`https://picsum.photos/seed/collection-${collection.id}/600/300`}
+                alt=""
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
+                className="object-cover transition-transform duration-300 group-hover:scale-105"
+              />
               <div
-                className="absolute inset-0 opacity-40"
+                className="absolute inset-0"
                 style={{
-                  background: `linear-gradient(135deg, ${collection.colorHex}55, transparent 70%)`,
+                  background: `linear-gradient(135deg, ${collection.colorHex}66, rgba(11,11,15,0.85) 75%)`,
                 }}
               />
 

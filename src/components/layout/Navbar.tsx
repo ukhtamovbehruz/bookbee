@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Menu } from "lucide-react";
 import { Logo } from "@/components/layout/Logo";
 import { SearchCommandDialog } from "@/components/layout/SearchCommandDialog";
-import { LoginDialog, RegisterDialog } from "@/components/layout/AuthDialogs";
+import { UserMenu } from "@/components/layout/UserMenu";
 import { PremiumButton } from "@/components/layout/PremiumButton";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { useAuth } from "@/context/AuthProvider";
 
 const NAV_LINKS = [
   { href: "/#categories", label: "Categories" },
@@ -24,6 +25,7 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user } = useAuth();
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-white/5 glass">
@@ -49,8 +51,18 @@ export function Navbar() {
           <SearchCommandDialog />
           <PremiumButton className="hidden sm:inline-flex" />
           <div className="hidden sm:flex items-center gap-2">
-            <LoginDialog />
-            <RegisterDialog />
+            {user ? (
+              <UserMenu />
+            ) : (
+              <>
+                <Button variant="ghost" asChild>
+                  <Link href="/login">Log in</Link>
+                </Button>
+                <Button variant="secondary" asChild>
+                  <Link href="/signup">Sign Up</Link>
+                </Button>
+              </>
+            )}
           </div>
 
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -84,10 +96,18 @@ export function Navbar() {
                   ))}
                 </nav>
                 <PremiumButton className="w-full justify-center" />
-                <div className="flex flex-col gap-2">
-                  <LoginDialog />
-                  <RegisterDialog />
-                </div>
+                {user ? (
+                  <UserMenu />
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <Button variant="ghost" asChild onClick={() => setMobileOpen(false)}>
+                      <Link href="/login">Log in</Link>
+                    </Button>
+                    <Button variant="secondary" asChild onClick={() => setMobileOpen(false)}>
+                      <Link href="/signup">Sign Up</Link>
+                    </Button>
+                  </div>
+                )}
               </div>
             </SheetContent>
           </Sheet>

@@ -1,17 +1,29 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Pause, Play, Star, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BookActions } from "@/components/book/BookActions";
+import { RatingWidget } from "@/components/book/RatingWidget";
 import { useAudioPlayer } from "@/components/player/AudioPlayerProvider";
+import { useGuardedPlay } from "@/hooks/useGuardedPlay";
+import { useLiveListenerCount } from "@/hooks/useLiveListenerCount";
+import { getEffectiveRating } from "@/lib/ratings";
 import { formatCount, formatDuration } from "@/lib/utils";
 import type { Book } from "@/lib/types";
 
 export function BookHero({ book }: { book: Book }) {
-  const { currentBook, isPlaying, playBook, togglePlayPause } = useAudioPlayer();
+  const { currentBook, isPlaying, togglePlayPause } = useAudioPlayer();
+  const guardedPlay = useGuardedPlay();
   const isCurrent = currentBook?.id === book.id;
+  const liveListenerCount = useLiveListenerCount(book);
+  const [effectiveRating, setEffectiveRating] = useState(() => getEffectiveRating(book));
+
+  useEffect(() => {
+    setEffectiveRating(getEffectiveRating(book));
+  }, [book]);
 
   return (
     <section className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
@@ -63,22 +75,24 @@ export function BookHero({ book }: { book: Book }) {
           <div className="flex flex-wrap items-center gap-4 text-sm">
             <span className="flex items-center gap-1 font-medium text-foreground">
               <Star className="size-4 fill-primary text-primary" />
-              {book.rating.toFixed(1)}
+              {effectiveRating.rating.toFixed(1)}
               <span className="text-muted-foreground">
-                ({formatCount(book.ratingCount)})
+                ({formatCount(effectiveRating.ratingCount)})
               </span>
             </span>
             <span className="flex items-center gap-1 text-muted-foreground">
               <Users className="size-4" />
-              {formatCount(book.listenerCount)} listeners
+              {formatCount(liveListenerCount)} listeners
             </span>
           </div>
+
+          <RatingWidget book={book} onRated={() => setEffectiveRating(getEffectiveRating(book))} />
 
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <Button
               size="lg"
               className="h-12 gap-2 rounded-full px-8 text-base"
-              onClick={() => (isCurrent ? togglePlayPause() : playBook(book))}
+              onClick={() => (isCurrent ? togglePlayPause() : guardedPlay(book))}
             >
               {isCurrent && isPlaying ? (
                 <Pause className="size-4 fill-current" />

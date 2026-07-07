@@ -4,12 +4,12 @@ import Image from "next/image";
 import { Play, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useAudioPlayer } from "@/components/player/AudioPlayerProvider";
+import { useGuardedPlay } from "@/hooks/useGuardedPlay";
 import { books } from "@/lib/mock-data/books";
 import { formatCount } from "@/lib/utils";
 
 export function Hero() {
-  const { playBook } = useAudioPlayer();
+  const guardedPlay = useGuardedPlay();
   const featured = books.find((b) => b.id === "sapiens") ?? books[0];
 
   return (
@@ -38,7 +38,7 @@ export function Hero() {
             <Button
               size="lg"
               className="h-12 gap-2 rounded-full px-6 text-base"
-              onClick={() => playBook(featured)}
+              onClick={() => guardedPlay(featured)}
             >
               <Play className="size-4 fill-current" />
               Start Listening Free

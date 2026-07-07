@@ -11,6 +11,8 @@ import {
 } from "react";
 import type { Book, Chapter } from "@/lib/types";
 import { SKIP_BACKWARD_SEC, SKIP_FORWARD_SEC } from "@/lib/constants";
+import { incrementPlayCount } from "@/lib/listeners";
+import { recordListenToday } from "@/lib/streak";
 
 interface AudioPlayerContextValue {
   currentBook: Book | null;
@@ -79,6 +81,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         ? (book.chapters.find((c) => c.id === chapterId) ?? book.chapters[0])
         : book.chapters[0];
       if (!chapter) return;
+      incrementPlayCount(book.id);
+      recordListenToday();
       playChapter(book, chapter);
     },
     [playChapter],

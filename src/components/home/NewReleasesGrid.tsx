@@ -1,9 +1,28 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { SectionHeading } from "@/components/shared/SectionHeading";
 import { BookCard } from "@/components/book/BookCard";
 import { getNewReleases } from "@/lib/mock-data/books";
+import { getCustomBooks } from "@/lib/mock-data/custom-books";
+import type { Book } from "@/lib/types";
 
 export function NewReleasesGrid() {
-  const releases = getNewReleases(12);
+  const [releases, setReleases] = useState<Book[]>(() => getNewReleases(12));
+
+  useEffect(() => {
+    const custom = getCustomBooks();
+    if (custom.length === 0) return;
+    setReleases(
+      [...custom, ...getNewReleases(12)]
+        .sort(
+          (a, b) =>
+            new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+        )
+        .slice(0, 12),
+    );
+  }, []);
+
   if (releases.length === 0) return null;
 
   return (

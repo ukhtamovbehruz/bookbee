@@ -5,13 +5,13 @@ import Link from "next/link";
 import { Play } from "lucide-react";
 import { SectionHeading } from "@/components/shared/SectionHeading";
 import { ScrollRail } from "@/components/shared/ScrollRail";
-import { useAudioPlayer } from "@/components/player/AudioPlayerProvider";
+import { useGuardedPlay } from "@/hooks/useGuardedPlay";
 import { continueListening, getProgressRatio } from "@/lib/mock-data/continue-listening";
 import { getBookById } from "@/lib/mock-data/books";
 import { formatDuration } from "@/lib/utils";
 
 export function ContinueListeningRail() {
-  const { playBook } = useAudioPlayer();
+  const guardedPlay = useGuardedPlay();
 
   const entries = continueListening
     .map((entry) => ({ entry, book: getBookById(entry.bookId) }))
@@ -49,7 +49,7 @@ export function ContinueListeningRail() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      playBook(book, entry.chapterId);
+                      guardedPlay(book, entry.chapterId);
                     }}
                     aria-label={`Resume ${book.title}`}
                     className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-110"

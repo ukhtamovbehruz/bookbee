@@ -1,16 +1,50 @@
 "use client";
 
-import { useState } from "react";
-import { Bookmark, Heart, Library, Share2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Award, Bookmark, GraduationCap, Heart, Library, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthProvider";
+import {
+  addToLibrary,
+  getLibraryEntry,
+  removeFromLibrary,
+} from "@/lib/library";
 import { cn } from "@/lib/utils";
 import type { Book } from "@/lib/types";
 
 export function BookActions({ book }: { book: Book }) {
+  const { user } = useAuth();
+  const router = useRouter();
   const [inLibrary, setInLibrary] = useState(false);
+  const [finished, setFinished] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [favorited, setFavorited] = useState(false);
+
+  useEffect(() => {
+    const entry = getLibraryEntry(book.id);
+    setInLibrary(Boolean(entry));
+    setFinished(Boolean(entry?.certificateEarned));
+  }, [book.id]);
+
+  function handleToggleLibrary() {
+    if (!user) {
+      toast.warning("Sign up free to build your library.");
+      router.push("/signup");
+      return;
+    }
+    if (inLibrary) {
+      removeFromLibrary(book.id);
+      setInLibrary(false);
+      toast.info(`Removed "${book.title}" from your library.`);
+    } else {
+      addToLibrary(book.id);
+      setInLibrary(true);
+      toast.success(`Added "${book.title}" to your library.`);
+    }
+  }
 
   async function handleShare() {
     const url = typeof window !== "undefined" ? window.location.href : "";
@@ -33,16 +67,28 @@ export function BookActions({ book }: { book: Book }) {
       <Button
         variant={inLibrary ? "secondary" : "outline"}
         className="gap-2"
-        onClick={() => {
-          setInLibrary((v) => !v);
-          toast.success(
-            inLibrary ? `Removed "${book.title}" from your library` : `Added "${book.title}" to your library`,
-          );
-        }}
+        onClick={handleToggleLibrary}
       >
         <Library className="size-4" />
         {inLibrary ? "In Library" : "Add to Library"}
       </Button>
+
+      {inLibrary &&
+        (finished ? (
+          <Button variant="outline" className="gap-2" asChild>
+            <Link href={`/book/${book.id}/certificate`}>
+              <Award className="size-4 text-primary" />
+              View Certificate
+            </Link>
+          </Button>
+        ) : (
+          <Button variant="outline" className="gap-2" asChild>
+            <Link href={`/book/${book.id}/quiz`}>
+              <GraduationCap className="size-4" />
+              Mark as Finished
+            </Link>
+          </Button>
+        ))}
 
       <Button
         variant="outline"

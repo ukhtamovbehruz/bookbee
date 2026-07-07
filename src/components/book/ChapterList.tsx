@@ -2,13 +2,15 @@
 
 import { Pause, Play } from "lucide-react";
 import { useAudioPlayer } from "@/components/player/AudioPlayerProvider";
+import { useGuardedPlay } from "@/hooks/useGuardedPlay";
 import { formatDuration } from "@/lib/utils";
 import type { Book } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export function ChapterList({ book }: { book: Book }) {
-  const { currentBook, currentChapter, isPlaying, playBook, togglePlayPause } =
+  const { currentBook, currentChapter, isPlaying, togglePlayPause } =
     useAudioPlayer();
+  const guardedPlay = useGuardedPlay();
 
   return (
     <ol className="divide-y divide-white/5 overflow-hidden rounded-2xl border border-white/5">
@@ -24,7 +26,7 @@ export function ChapterList({ book }: { book: Book }) {
                 if (isActive) {
                   togglePlayPause();
                 } else {
-                  playBook(book, chapter.id);
+                  guardedPlay(book, chapter.id);
                 }
               }}
               className={cn(

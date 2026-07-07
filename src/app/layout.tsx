@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { AudioPlayerProvider } from "@/components/player/AudioPlayerProvider";
-import { StickyPlayer } from "@/components/player/StickyPlayer";
+import { AuthProvider } from "@/context/AuthProvider";
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -36,13 +34,12 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <TooltipProvider delayDuration={200}>
-          <AudioPlayerProvider>
-            <Navbar />
-            <main className="flex-1">{children}</main>
-            <Footer />
-            <StickyPlayer />
-            <Toaster position="bottom-right" />
-          </AudioPlayerProvider>
+          <AuthProvider>
+            <AudioPlayerProvider>
+              {children}
+              <Toaster position="bottom-right" />
+            </AudioPlayerProvider>
+          </AuthProvider>
         </TooltipProvider>
       </body>
     </html>

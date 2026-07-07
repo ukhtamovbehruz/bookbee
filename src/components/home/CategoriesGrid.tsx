@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import {
   Briefcase,
@@ -45,20 +46,36 @@ export function CategoriesGrid() {
             <motion.div key={category.id} variants={slideUp}>
               <Link
                 href={`/category/${category.id}`}
-                className="glass group flex flex-col items-start gap-3 rounded-2xl p-4 transition-transform hover:-translate-y-1 hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="group relative flex aspect-4/3 flex-col justify-end overflow-hidden rounded-2xl transition-transform hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <span
-                  className="flex size-10 items-center justify-center rounded-xl"
+                <Image
+                  src={`https://picsum.photos/seed/category-${category.id}/400/300`}
+                  alt=""
+                  fill
+                  sizes="(max-width: 640px) 45vw, 220px"
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+                <div
+                  className="absolute inset-0"
                   style={{
-                    backgroundColor: `${category.colorHex}22`,
-                    color: category.colorHex,
+                    background: `linear-gradient(180deg, ${category.colorHex}22 0%, rgba(11,11,15,0.55) 55%, rgba(11,11,15,0.92) 100%)`,
                   }}
-                >
-                  <Icon className="size-5" />
-                </span>
-                <span className="text-sm font-medium text-foreground">
-                  {category.name}
-                </span>
+                />
+
+                <div className="relative z-10 flex flex-col gap-2 p-4">
+                  <span
+                    className="flex size-9 items-center justify-center rounded-xl backdrop-blur-sm"
+                    style={{
+                      backgroundColor: `${category.colorHex}33`,
+                      color: category.colorHex,
+                    }}
+                  >
+                    <Icon className="size-4.5" />
+                  </span>
+                  <span className="text-sm font-semibold text-white drop-shadow-sm">
+                    {category.name}
+                  </span>
+                </div>
               </Link>
             </motion.div>
           );

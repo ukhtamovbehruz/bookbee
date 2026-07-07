@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { Globe, Mail, Phone } from "lucide-react";
 import { Logo } from "@/components/layout/Logo";
 import {
   InstagramIcon,
   XIcon,
-  YoutubeIcon,
-  FacebookIcon,
+  TelegramIcon,
+  LinkedInIcon,
 } from "@/components/layout/SocialIcons";
 
 const FOOTER_LINKS = [
@@ -14,6 +15,7 @@ const FOOTER_LINKS = [
       { label: "About", href: "/about" },
       { label: "Contact", href: "/contact" },
       { label: "Help Center", href: "/help" },
+      { label: "FAQ", href: "/faq" },
     ],
   },
   {
@@ -26,10 +28,11 @@ const FOOTER_LINKS = [
 ];
 
 const SOCIAL_LINKS = [
-  { label: "Instagram", href: "https://instagram.com", icon: InstagramIcon },
-  { label: "X", href: "https://x.com", icon: XIcon },
-  { label: "YouTube", href: "https://youtube.com", icon: YoutubeIcon },
-  { label: "Facebook", href: "https://facebook.com", icon: FacebookIcon },
+  { label: "Telegram", href: "http://t.me/bookbee_hub", icon: TelegramIcon },
+  { label: "Instagram", href: "http://instagram.com/bookbee_hub", icon: InstagramIcon },
+  { label: "LinkedIn", href: "http://linkedin.com/company/bookbee-hub", icon: LinkedInIcon },
+  { label: "X (Twitter)", href: "http://x.com/bookbee_hub", icon: XIcon },
+  { label: "Website", href: "http://book-bee.netlify.app/", icon: Globe },
 ];
 
 export function Footer() {
@@ -43,6 +46,22 @@ export function Footer() {
               Discover, listen, and grow with the world&apos;s best audiobooks —
               anytime, anywhere.
             </p>
+            <div className="mt-4 space-y-1.5 text-sm text-muted-foreground">
+              <a
+                href="mailto:uktamovbekhruz08@gmail.com"
+                className="flex items-center gap-2 transition-colors hover:text-foreground"
+              >
+                <Mail className="size-3.5 shrink-0" />
+                uktamovbekhruz08@gmail.com
+              </a>
+              <a
+                href="tel:+998940865600"
+                className="flex items-center gap-2 transition-colors hover:text-foreground"
+              >
+                <Phone className="size-3.5 shrink-0" />
+                +998 (94) 086-5-600
+              </a>
+            </div>
           </div>
 
           {FOOTER_LINKS.map((group) => (
@@ -67,7 +86,7 @@ export function Footer() {
 
           <div>
             <h3 className="text-sm font-semibold text-foreground">Follow us</h3>
-            <div className="mt-4 flex gap-3">
+            <div className="mt-4 flex flex-wrap gap-3">
               {SOCIAL_LINKS.map((social) => {
                 const Icon = social.icon;
                 return (
@@ -87,8 +106,9 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 border-t border-white/5 pt-6 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} BookBee. All rights reserved.
+        <div className="mt-10 flex flex-col items-center gap-2 border-t border-white/5 pt-6 text-center text-xs text-muted-foreground sm:flex-row sm:justify-between">
+          <span>© {new Date().getFullYear()} BookBee. All rights reserved.</span>
+          <span>Tashkent, Uzbekistan</span>
         </div>
       </div>
     </footer>

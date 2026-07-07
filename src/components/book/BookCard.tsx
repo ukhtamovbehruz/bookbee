@@ -1,12 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Play, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAudioPlayer } from "@/components/player/AudioPlayerProvider";
+import { useGuardedPlay } from "@/hooks/useGuardedPlay";
 import { cardHover } from "@/animations/variants";
+import { getEffectiveRating } from "@/lib/ratings";
 import { cn, formatDuration } from "@/lib/utils";
 import type { Book } from "@/lib/types";
 
@@ -19,8 +22,14 @@ export function BookCard({
   className?: string;
   width?: string;
 }) {
-  const { playBook, currentBook, isPlaying } = useAudioPlayer();
+  const { currentBook, isPlaying } = useAudioPlayer();
+  const guardedPlay = useGuardedPlay();
   const isCurrentlyPlaying = currentBook?.id === book.id && isPlaying;
+  const [rating, setRating] = useState(book.rating);
+
+  useEffect(() => {
+    setRating(getEffectiveRating(book).rating);
+  }, [book]);
 
   return (
     <motion.div
@@ -56,7 +65,7 @@ export function BookCard({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              playBook(book);
+              guardedPlay(book);
             }}
             aria-label={`Play ${book.title}`}
             className="absolute bottom-2 right-2 flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-lg shadow-black/40 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 translate-y-2 hover:scale-110"
@@ -81,7 +90,7 @@ export function BookCard({
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-0.5">
               <Star className="size-3 fill-primary text-primary" />
-              {book.rating.toFixed(1)}
+              {rating.toFixed(1)}
             </span>
             <span aria-hidden="true">·</span>
             <span>{formatDuration(book.durationSec)}</span>

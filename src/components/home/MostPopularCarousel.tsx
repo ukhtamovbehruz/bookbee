@@ -11,12 +11,12 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { useAudioPlayer } from "@/components/player/AudioPlayerProvider";
+import { useGuardedPlay } from "@/hooks/useGuardedPlay";
 import { getMostPopularBooks } from "@/lib/mock-data/books";
 import { formatCount, formatDuration } from "@/lib/utils";
 
 export function MostPopularCarousel() {
-  const { playBook } = useAudioPlayer();
+  const guardedPlay = useGuardedPlay();
   const popular = getMostPopularBooks(10);
 
   return (
@@ -47,7 +47,7 @@ export function MostPopularCarousel() {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    playBook(book);
+                    guardedPlay(book);
                   }}
                   aria-label={`Play ${book.title}`}
                   className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-lg transition-all group-hover:opacity-100 hover:scale-110"
