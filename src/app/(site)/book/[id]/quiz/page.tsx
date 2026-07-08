@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/AuthProvider";
 import { getBookById } from "@/lib/mock-data/books";
-import { getCustomBookById } from "@/lib/mock-data/custom-books";
+import { getCatalogBookById } from "@/lib/mock-data/catalog";
 import { addToLibrary } from "@/lib/library";
-import { generateQuiz, PASSING_SCORE, TOTAL_QUESTIONS } from "@/lib/quiz";
+import { getQuizForBook } from "@/lib/quiz";
 import { markFinished } from "@/lib/library";
 import { cn } from "@/lib/utils";
 import type { Book } from "@/lib/types";
@@ -26,7 +26,7 @@ export default function QuizPage() {
   const [result, setResult] = useState<{ score: number; passed: boolean } | null>(null);
 
   useEffect(() => {
-    setBook(getBookById(params.id) ?? getCustomBookById(params.id) ?? null);
+    setBook(getCatalogBookById(params.id) ?? getBookById(params.id) ?? null);
   }, [params.id]);
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export default function QuizPage() {
   }, [isReady, user, router]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- `attempt` forces a reshuffle on retry
-  const questions = useMemo(() => (book ? generateQuiz(book) : []), [book, attempt]);
+  const questions = useMemo(() => (book ? getQuizForBook(book) : []), [book, attempt]);
 
   if (!isReady || !user) return null;
 
@@ -61,6 +61,8 @@ export default function QuizPage() {
     );
   }
 
+  const totalQuestions = questions.length;
+  const passingScore = Math.max(1, Math.ceil(totalQuestions * 0.7));
   const allAnswered = questions.every((q) => answers[q.id] !== undefined);
 
   function handleSubmit() {
@@ -69,14 +71,14 @@ export default function QuizPage() {
       (total, q) => total + (answers[q.id] === q.correctIndex ? 1 : 0),
       0,
     );
-    const passed = score >= PASSING_SCORE;
+    const passed = score >= passingScore;
 
     if (passed) {
       addToLibrary(book.id);
       markFinished(book.id, score);
-      toast.success(`You passed with ${score}/${TOTAL_QUESTIONS} — certificate unlocked!`);
+      toast.success(`You passed with ${score}/${totalQuestions} — certificate unlocked!`);
     } else {
-      toast.warning(`You scored ${score}/${TOTAL_QUESTIONS} — you need ${PASSING_SCORE} to pass.`);
+      toast.warning(`You scored ${score}/${totalQuestions} — you need ${passingScore} to pass.`);
     }
     setResult({ score, passed });
   }
@@ -106,7 +108,7 @@ export default function QuizPage() {
           {result.passed ? "You passed!" : "Not quite there yet"}
         </h1>
         <p className="mt-2 text-muted-foreground">
-          You scored {result.score} out of {TOTAL_QUESTIONS} on &ldquo;{book.title}&rdquo;.
+          You scored {result.score} out of {totalQuestions} on &ldquo;{book.title}&rdquo;.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           {result.passed ? (
@@ -137,7 +139,7 @@ export default function QuizPage() {
       </span>
       <h1 className="mt-4 text-2xl font-bold tracking-tight">{book.title}</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Answer all {TOTAL_QUESTIONS} questions — score {PASSING_SCORE} or higher to earn your
+        Answer all {totalQuestions} questions — score {passingScore} or higher to earn your
         certificate.
       </p>
 

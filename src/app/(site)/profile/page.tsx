@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -15,15 +15,16 @@ import {
   ShieldCheck,
   UserRound,
 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CountUp } from "@/components/shared/CountUp";
+import { ActivityCard } from "@/components/activity/ActivityCard";
 import { useAuth } from "@/context/AuthProvider";
-import { getStreak } from "@/lib/streak";
+import { getActivityStreak } from "@/lib/activity";
 import { getLibraryEntries } from "@/lib/library";
 import { getCatalogBookById } from "@/lib/mock-data/catalog";
 import { getProfile, setProfile } from "@/lib/profile";
@@ -44,7 +45,9 @@ export default function ProfilePage() {
   const [tab, setTab] = useState<Tab>("account");
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
+  const [avatar, setAvatar] = useState("");
   const [stats, setStats] = useState({ streak: 0, finished: 0, hours: 0 });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isReady && !user) router.replace("/login");
@@ -53,7 +56,9 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) return;
     setName(user.name);
-    setBio(getProfile().bio);
+    const profile = getProfile();
+    setBio(profile.bio);
+    setAvatar(profile.avatar);
 
     const entries = getLibraryEntries();
     const finished = entries.filter((e) => e.certificateEarned);
@@ -62,11 +67,23 @@ export default function ProfilePage() {
       return total + (book?.durationSec ?? 0);
     }, 0);
     setStats({
-      streak: getStreak().count,
+      streak: getActivityStreak(),
       finished: finished.length,
       hours: Math.round(listenedSec / 3600),
     });
   }, [user]);
+
+  function handleAvatarFile(file: File) {
+    if (!file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result);
+      setAvatar(dataUrl);
+      setProfile({ avatar: dataUrl });
+      toast.success("Profile picture updated.");
+    };
+    reader.readAsDataURL(file);
+  }
 
   const initials = useMemo(
     () =>
@@ -93,16 +110,36 @@ export default function ProfilePage() {
         {/* left column */}
         <aside className="flex flex-col gap-6">
           <div className="glass flex flex-col items-center rounded-2xl p-6 text-center">
-            <div className="relative">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="group relative rounded-full"
+              aria-label="Change profile picture"
+            >
               <Avatar size="lg" className="size-20">
-                <AvatarFallback className="bg-primary/20 text-xl text-primary">
-                  {initials}
-                </AvatarFallback>
+                {avatar ? (
+                  <AvatarImage src={avatar} alt={user.name} />
+                ) : (
+                  <AvatarFallback className="bg-primary/20 text-xl text-primary">
+                    {initials}
+                  </AvatarFallback>
+                )}
               </Avatar>
-              <span className="absolute -bottom-1 -right-1 flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <span className="absolute -bottom-1 -right-1 flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground transition-transform group-hover:scale-110">
                 <Pencil className="size-3.5" />
               </span>
-            </div>
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleAvatarFile(file);
+                e.target.value = "";
+              }}
+            />
             <p className="mt-4 font-semibold">{user.name}</p>
             <Badge variant="secondary" className="mt-2 gap-1">
               <Crown className="size-3" />
@@ -146,6 +183,8 @@ export default function ProfilePage() {
 
         {/* right column */}
         <div className="flex flex-col gap-6">
+          <ActivityCard />
+
           <motion.div
             initial="hidden"
             animate="visible"

@@ -1,4 +1,4 @@
-import type { Book, BookLanguage } from "@/lib/types";
+import type { Book, BookLanguage, Chapter } from "@/lib/types";
 import { readStorage, writeStorage } from "@/lib/local-storage";
 import { books as seedBooks } from "./books";
 import { getCustomBooks, removeCustomBook } from "./custom-books";
@@ -21,6 +21,8 @@ export interface BookEdit {
   durationSec?: number;
   isPremium?: boolean;
   audioUrl?: string;
+  tags?: string[];
+  chapters?: Chapter[];
   hidden?: boolean;
 }
 
@@ -50,9 +52,13 @@ export function deleteBook(bookId: string): void {
 function applyEdit(book: Book, edit: BookEdit | undefined): Book {
   if (!edit) return book;
 
-  const durationSec = edit.durationSec ?? book.durationSec;
+  const hasExplicitChapters = edit.chapters !== undefined && edit.chapters.length > 0;
+  const durationSec = hasExplicitChapters
+    ? edit.chapters!.reduce((sum, c) => sum + c.durationSec, 0)
+    : (edit.durationSec ?? book.durationSec);
   const needsChapterRebuild =
-    edit.durationSec !== undefined || edit.audioUrl !== undefined;
+    !hasExplicitChapters &&
+    (edit.durationSec !== undefined || edit.audioUrl !== undefined);
 
   const merged: Book = {
     ...book,
@@ -65,10 +71,14 @@ function applyEdit(book: Book, edit: BookEdit | undefined): Book {
     ...(edit.categoryIds !== undefined && { categoryIds: edit.categoryIds }),
     ...(edit.language !== undefined && { language: edit.language }),
     ...(edit.isPremium !== undefined && { isPremium: edit.isPremium }),
+    ...(edit.tags !== undefined && { tags: edit.tags }),
     durationSec,
   };
 
-  if (edit.audioUrl) {
+  if (hasExplicitChapters) {
+    merged.chapters = edit.chapters!;
+    merged.audioSampleUrl = edit.chapters![0].audioUrl;
+  } else if (edit.audioUrl) {
     merged.audioSampleUrl = edit.audioUrl;
   }
 

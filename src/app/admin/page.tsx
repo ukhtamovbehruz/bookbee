@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import {
   Award,
   BookOpen,
+  GraduationCap,
   Headphones,
   LayoutGrid,
   Library as LibraryIcon,
@@ -31,6 +32,7 @@ import { LogoIcon } from "@/components/layout/LogoIcon";
 import { DonutChart } from "@/components/admin/Charts";
 import { BookFormDialog } from "@/components/admin/BookFormDialog";
 import { CollectionFormDialog } from "@/components/admin/CollectionFormDialog";
+import { QuizEditorDialog } from "@/components/admin/QuizEditorDialog";
 import { CountUp } from "@/components/shared/CountUp";
 import { useAdminSession } from "@/hooks/useAdminSession";
 import { categories } from "@/lib/mock-data/categories";
@@ -66,6 +68,7 @@ export default function AdminDashboardPage() {
   const [bookDialogOpen, setBookDialogOpen] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | undefined>(undefined);
   const [collectionDialog, setCollectionDialog] = useState<Collection | null>(null);
+  const [quizBook, setQuizBook] = useState<Book | null>(null);
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -405,6 +408,14 @@ export default function AdminDashboardPage() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        aria-label={`Edit questions for ${book.title}`}
+                        onClick={() => setQuizBook(book)}
+                      >
+                        <GraduationCap className="size-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         aria-label={`Edit ${book.title}`}
                         onClick={() => {
                           setEditingBook(book);
@@ -571,6 +582,12 @@ export default function AdminDashboardPage() {
         open={collectionDialog !== null}
         onOpenChange={(o) => !o && setCollectionDialog(null)}
         collection={collectionDialog}
+        onSaved={refresh}
+      />
+      <QuizEditorDialog
+        open={quizBook !== null}
+        onOpenChange={(o) => !o && setQuizBook(null)}
+        book={quizBook}
         onSaved={refresh}
       />
     </div>

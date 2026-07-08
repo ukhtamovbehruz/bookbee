@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Flame, Library, LogOut, UserRound } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Coins, Flame, Library, LogOut, Trophy, UserRound } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,9 +13,28 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/AuthProvider";
+import { getProfile, onProfileChanged } from "@/lib/profile";
+import { getPoints } from "@/lib/points";
+import { onActivityChanged } from "@/lib/activity";
 
 export function UserMenu() {
   const { user, signOut } = useAuth();
+  const [avatar, setAvatar] = useState("");
+  const [points, setPoints] = useState(0);
+
+  useEffect(() => {
+    const refreshProfile = () => setAvatar(getProfile().avatar);
+    const refreshPoints = () => setPoints(getPoints());
+    refreshProfile();
+    refreshPoints();
+    const offProfile = onProfileChanged(refreshProfile);
+    const offActivity = onActivityChanged(refreshPoints);
+    return () => {
+      offProfile();
+      offActivity();
+    };
+  }, []);
+
   if (!user) return null;
 
   const initials = user.name
@@ -33,9 +53,13 @@ export function UserMenu() {
           className="flex items-center gap-2 rounded-full pl-1 pr-2 py-1 transition-colors hover:bg-white/5"
         >
           <Avatar size="sm">
-            <AvatarFallback className="bg-primary/20 text-primary">
-              {initials}
-            </AvatarFallback>
+            {avatar ? (
+              <AvatarImage src={avatar} alt={user.name} />
+            ) : (
+              <AvatarFallback className="bg-primary/20 text-primary">
+                {initials}
+              </AvatarFallback>
+            )}
           </Avatar>
           <span className="hidden text-sm font-medium sm:inline">
             {user.name.split(" ")[0]}
@@ -43,7 +67,13 @@ export function UserMenu() {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="truncate">{user.email}</DropdownMenuLabel>
+        <DropdownMenuLabel>
+          <p className="truncate">{user.email}</p>
+          <p className="mt-1 flex items-center gap-1 text-xs font-normal text-primary">
+            <Coins className="size-3.5" />
+            {points.toLocaleString()} BookBee Points
+          </p>
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link href="/profile">
@@ -55,6 +85,12 @@ export function UserMenu() {
           <Link href="/library">
             <Library className="size-4" />
             My Library
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/leaderboard">
+            <Trophy className="size-4" />
+            Leaderboard
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

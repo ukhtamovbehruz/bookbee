@@ -1,5 +1,7 @@
 import { BookHero } from "@/components/book/BookHero";
 import { ChapterList } from "@/components/book/ChapterList";
+import { FinishBookCard } from "@/components/book/FinishBookCard";
+import { BookDiscussion } from "@/components/book/BookDiscussion";
 import { RecommendedBooksRail } from "@/components/book/RecommendedBooksRail";
 import { SectionHeading } from "@/components/shared/SectionHeading";
 import type { Book } from "@/lib/types";
@@ -13,6 +15,14 @@ export function BookDetailsView({ book }: { book: Book }) {
         <SectionHeading title="Table of Contents" className="mb-5" />
         <ChapterList book={book} />
       </section>
+
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+        <FinishBookCard book={book} />
+      </div>
+
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+        <BookDiscussion book={book} />
+      </div>
 
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <RecommendedBooksRail book={book} />

@@ -1,4 +1,4 @@
-import type { Book } from "@/lib/types";
+import type { Book, Chapter } from "@/lib/types";
 import { readStorage, writeStorage } from "@/lib/local-storage";
 import { generateChapters } from "./chapters";
 import { SAMPLE_AUDIO_URLS } from "@/lib/constants";
@@ -17,6 +17,8 @@ export interface NewBookInput {
   isPremium: boolean;
   coverUrl?: string;
   audioUrl?: string;
+  tags?: string[];
+  chapters?: Chapter[];
 }
 
 function slugify(title: string): string {
@@ -45,10 +47,22 @@ export function addCustomBook(input: NewBookInput): Book {
     suffix += 1;
   }
 
-  const durationSec = Math.max(60, Math.round(input.durationSec));
-  const chapterCount = Math.max(4, Math.round(durationSec / 3600));
-  const audioUrl =
-    input.audioUrl?.trim() || SAMPLE_AUDIO_URLS[existing.length % SAMPLE_AUDIO_URLS.length];
+  const hasChapters = input.chapters !== undefined && input.chapters.length > 0;
+  // Re-key explicit chapters to this book's id so their ids are stable/unique.
+  const chapters: Chapter[] = hasChapters
+    ? input.chapters!.map((c, i) => ({ ...c, id: `${id}-ch-${i + 1}`, index: i + 1 }))
+    : generateChapters(
+        id,
+        Math.max(60, Math.round(input.durationSec)),
+        Math.max(4, Math.round(Math.max(60, input.durationSec) / 3600)),
+        input.audioUrl?.trim() || undefined,
+      );
+
+  const durationSec = chapters.reduce((sum, c) => sum + c.durationSec, 0);
+  const audioSampleUrl =
+    chapters[0]?.audioUrl ||
+    input.audioUrl?.trim() ||
+    SAMPLE_AUDIO_URLS[existing.length % SAMPLE_AUDIO_URLS.length];
 
   const book: Book = {
     id,
@@ -67,8 +81,9 @@ export function addCustomBook(input: NewBookInput): Book {
     isPremium: input.isPremium,
     isNew: true,
     publishedAt: new Date().toISOString(),
-    audioSampleUrl: audioUrl,
-    chapters: generateChapters(id, durationSec, chapterCount, input.audioUrl?.trim() || undefined),
+    tags: input.tags && input.tags.length > 0 ? input.tags : undefined,
+    audioSampleUrl,
+    chapters,
   };
 
   writeStorage(CUSTOM_BOOKS_KEY, [...existing, book]);

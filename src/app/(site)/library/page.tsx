@@ -17,7 +17,7 @@ import {
   setLibraryNote,
   type LibraryEntry,
 } from "@/lib/library";
-import { getStreak } from "@/lib/streak";
+import { getActivityStreak } from "@/lib/activity";
 import { formatDuration } from "@/lib/utils";
 import type { Book } from "@/lib/types";
 
@@ -30,7 +30,7 @@ export default function LibraryPage() {
   const { user, isReady } = useAuth();
   const router = useRouter();
   const [rows, setRows] = useState<Row[]>([]);
-  const [streak, setStreak] = useState({ count: 0, lastListenDate: null as string | null });
+  const [streak, setStreak] = useState(0);
 
   useEffect(() => {
     if (isReady && !user) router.replace("/login");
@@ -46,7 +46,7 @@ export default function LibraryPage() {
       })
       .filter((row): row is Row => row !== null);
     setRows(resolved);
-    setStreak(getStreak());
+    setStreak(getActivityStreak());
   }, [user]);
 
   if (!isReady || !user) return null;
@@ -67,10 +67,10 @@ export default function LibraryPage() {
         </span>
         <div>
           <p className="text-2xl font-bold">
-            {streak.count} day{streak.count === 1 ? "" : "s"}
+            {streak} day{streak === 1 ? "" : "s"}
           </p>
           <p className="text-sm text-muted-foreground">
-            Your current listening streak — play a chapter every day to keep it going.
+            Listen at least 7 minutes each day to keep your streak alive.
           </p>
         </div>
       </div>

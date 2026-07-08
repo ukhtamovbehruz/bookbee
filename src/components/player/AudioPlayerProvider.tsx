@@ -12,7 +12,8 @@ import {
 import type { Book, Chapter } from "@/lib/types";
 import { SKIP_BACKWARD_SEC, SKIP_FORWARD_SEC } from "@/lib/constants";
 import { incrementPlayCount } from "@/lib/listeners";
-import { recordListenToday } from "@/lib/streak";
+import { recordListenSeconds } from "@/lib/activity";
+import { resolveAudioSrc } from "@/lib/audio-store";
 
 interface AudioPlayerContextValue {
   currentBook: Book | null;
@@ -70,9 +71,12 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     setCurrentChapter(chapter);
     setIsLoading(true);
     setCurrentTime(0);
-    audio.src = chapter.audioUrl;
     audio.currentTime = 0;
-    audio.play().catch(() => setIsPlaying(false));
+    // Resolve idb: / blob refs (uploaded mp3s) to a playable URL
+    resolveAudioSrc(chapter.audioUrl).then((src) => {
+      audio.src = src;
+      audio.play().catch(() => setIsPlaying(false));
+    });
   }, []);
 
   const playBook = useCallback(
@@ -82,7 +86,6 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         : book.chapters[0];
       if (!chapter) return;
       incrementPlayCount(book.id);
-      recordListenToday();
       playChapter(book, chapter);
     },
     [playChapter],
@@ -186,6 +189,14 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     audio.playbackRate = playbackRate;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Track real listening time toward the daily goal / BookBee Points.
+  useEffect(() => {
+    if (!isPlaying) return;
+    const STEP = 5;
+    const interval = setInterval(() => recordListenSeconds(STEP), STEP * 1000);
+    return () => clearInterval(interval);
+  }, [isPlaying]);
 
   useEffect(() => {
     const audio = audioRef.current;

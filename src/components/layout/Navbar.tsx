@@ -7,6 +7,7 @@ import { Logo } from "@/components/layout/Logo";
 import { SearchCommandDialog } from "@/components/layout/SearchCommandDialog";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { PointsPill } from "@/components/layout/PointsPill";
 import { PremiumButton } from "@/components/layout/PremiumButton";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,6 +51,7 @@ export function Navbar() {
 
         <div className="flex flex-1 items-center justify-end gap-2 sm:gap-3">
           <SearchCommandDialog />
+          <PointsPill />
           <ThemeToggle />
           <PremiumButton className="hidden sm:inline-flex" />
           <div className="hidden sm:flex items-center gap-2">

@@ -2,6 +2,7 @@ import type { Book } from "@/lib/types";
 import { books } from "@/lib/mock-data/books";
 import { getCategoryById } from "@/lib/mock-data/categories";
 import { formatDuration } from "@/lib/utils";
+import { readStorage, writeStorage } from "@/lib/local-storage";
 
 export interface QuizQuestion {
   id: string;
@@ -12,6 +13,29 @@ export interface QuizQuestion {
 
 export const PASSING_SCORE = 7;
 export const TOTAL_QUESTIONS = 10;
+
+const ADMIN_QUIZ_KEY = "bookbee_quiz_questions";
+type AdminQuizStore = Record<string, QuizQuestion[]>;
+
+export function getAdminQuestions(bookId: string): QuizQuestion[] {
+  return readStorage<AdminQuizStore>(ADMIN_QUIZ_KEY, {})[bookId] ?? [];
+}
+
+export function saveAdminQuestions(bookId: string, questions: QuizQuestion[]): void {
+  const store = readStorage<AdminQuizStore>(ADMIN_QUIZ_KEY, {});
+  if (questions.length === 0) {
+    delete store[bookId];
+  } else {
+    store[bookId] = questions;
+  }
+  writeStorage(ADMIN_QUIZ_KEY, store);
+}
+
+/** Admin-authored questions take priority; otherwise fall back to generated ones. */
+export function getQuizForBook(book: Book): QuizQuestion[] {
+  const admin = getAdminQuestions(book.id);
+  return admin.length > 0 ? admin : generateQuiz(book);
+}
 
 function shuffle<T>(items: T[]): T[] {
   const copy = [...items];

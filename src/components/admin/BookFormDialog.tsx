@@ -23,11 +23,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CategoryMultiSelect } from "@/components/admin/CategoryMultiSelect";
-import { DurationInput } from "@/components/admin/DurationInput";
 import { CoverField } from "@/components/admin/CoverField";
+import { GenresField } from "@/components/admin/GenresField";
+import { ChaptersEditor } from "@/components/admin/ChaptersEditor";
 import { addCustomBook } from "@/lib/mock-data/custom-books";
 import { saveBookEdit } from "@/lib/mock-data/catalog";
-import type { Book, BookLanguage } from "@/lib/types";
+import { SAMPLE_AUDIO_URLS } from "@/lib/constants";
+import type { Book, BookLanguage, Chapter } from "@/lib/types";
 
 interface FormState {
   title: string;
@@ -38,9 +40,15 @@ interface FormState {
   coverUrl: string;
   categoryIds: string[];
   language: BookLanguage;
-  durationSec: number;
   isPremium: boolean;
-  audioUrl: string;
+  tags: string[];
+  chapters: Chapter[];
+}
+
+function defaultChapters(): Chapter[] {
+  return [
+    { id: "new-ch-1", index: 1, title: "Introduction", durationSec: 20 * 60, audioUrl: SAMPLE_AUDIO_URLS[0] },
+  ];
 }
 
 function emptyState(): FormState {
@@ -53,9 +61,9 @@ function emptyState(): FormState {
     coverUrl: "",
     categoryIds: [],
     language: "en",
-    durationSec: 5 * 3600,
     isPremium: false,
-    audioUrl: "",
+    tags: [],
+    chapters: defaultChapters(),
   };
 }
 
@@ -85,9 +93,9 @@ export function BookFormDialog({
         coverUrl: book.coverUrl,
         categoryIds: book.categoryIds,
         language: book.language,
-        durationSec: book.durationSec,
         isPremium: book.isPremium,
-        audioUrl: book.audioSampleUrl,
+        tags: book.tags ?? [],
+        chapters: book.chapters.length > 0 ? book.chapters : defaultChapters(),
       });
     } else {
       setForm(emptyState());
@@ -107,6 +115,18 @@ export function BookFormDialog({
       toast.error("Pick at least one category.");
       return;
     }
+    if (form.chapters.length === 0 || form.chapters.some((c) => !c.audioUrl)) {
+      toast.error("Every chapter needs an audio URL or uploaded file.");
+      return;
+    }
+
+    // Re-key chapters so ids/indexes are consistent for the saved book.
+    const chapters = form.chapters.map((c, i) => ({
+      ...c,
+      index: i + 1,
+      title: c.title.trim() || `Chapter ${i + 1}`,
+    }));
+    const durationSec = chapters.reduce((sum, c) => sum + c.durationSec, 0);
 
     if (isEdit && book) {
       saveBookEdit(book.id, {
@@ -118,9 +138,10 @@ export function BookFormDialog({
         coverUrl: form.coverUrl.trim(),
         categoryIds: form.categoryIds,
         language: form.language,
-        durationSec: form.durationSec,
+        durationSec,
         isPremium: form.isPremium,
-        audioUrl: form.audioUrl.trim() || undefined,
+        tags: form.tags,
+        chapters: chapters.map((c, i) => ({ ...c, id: `${book.id}-ch-${i + 1}` })),
       });
       toast.success(`"${form.title}" was updated.`);
     } else {
@@ -132,10 +153,11 @@ export function BookFormDialog({
         description: form.description.trim(),
         categoryIds: form.categoryIds,
         language: form.language,
-        durationSec: form.durationSec,
+        durationSec,
         isPremium: form.isPremium,
         coverUrl: form.coverUrl.trim(),
-        audioUrl: form.audioUrl.trim(),
+        tags: form.tags,
+        chapters,
       });
       toast.success(`"${form.title}" was added to the library.`);
     }
@@ -189,6 +211,11 @@ export function BookFormDialog({
             <CategoryMultiSelect value={form.categoryIds} onChange={(v) => set("categoryIds", v)} />
           </div>
 
+          <div className="space-y-1.5">
+            <Label>Genres</Label>
+            <GenresField value={form.tags} onChange={(v) => set("tags", v)} />
+          </div>
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Language</Label>
@@ -215,20 +242,7 @@ export function BookFormDialog({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label>Duration</Label>
-            <DurationInput seconds={form.durationSec} onChange={(v) => set("durationSec", v)} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="bf-audio">Audio URL</Label>
-            <Input
-              id="bf-audio"
-              placeholder="https://.../audio.mp3"
-              value={form.audioUrl}
-              onChange={(e) => set("audioUrl", e.target.value)}
-            />
-          </div>
+          <ChaptersEditor chapters={form.chapters} onChange={(v) => set("chapters", v)} />
         </div>
 
         <DialogFooter>
