@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Award, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { LogoIcon } from "@/components/layout/LogoIcon";
 import { useAuth } from "@/context/AuthProvider";
 import { getBookById } from "@/lib/mock-data/books";
 import { getCustomBookById } from "@/lib/mock-data/custom-books";
@@ -68,9 +68,17 @@ export default function CertificatePage() {
           className="pointer-events-none absolute inset-0 border-[12px] border-double border-primary/10"
         />
         <div className="relative flex flex-col items-center">
-          <div className="flex items-center gap-2">
-            <LogoIcon className="size-8" />
-            <span className="text-lg font-bold">bookbee</span>
+          <div className="flex flex-col items-center gap-2">
+            <Image
+              src="/bookbee-logo-full.svg"
+              alt="BookBee"
+              width={64}
+              height={64}
+              className="size-14"
+            />
+            <span className="text-lg font-bold uppercase tracking-[0.35em]">
+              BookBee
+            </span>
           </div>
 
           <span className="mt-8 flex size-16 items-center justify-center rounded-full bg-primary/15 text-primary">

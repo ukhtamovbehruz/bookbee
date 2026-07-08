@@ -2,15 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
   BellRing,
   CreditCard,
   Crown,
-  Flame,
-  Headphones,
-  Library,
+  LayoutDashboard,
   Pencil,
   ShieldCheck,
   UserRound,
@@ -21,32 +18,52 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CountUp } from "@/components/shared/CountUp";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ActivityCard } from "@/components/activity/ActivityCard";
+import { LevelBadge } from "@/components/profile/LevelBadge";
+import { ListeningInsights } from "@/components/profile/ListeningInsights";
+import { AchievementsPanel } from "@/components/profile/AchievementsPanel";
+import { CertificatesGallery } from "@/components/profile/CertificatesGallery";
 import { useAuth } from "@/context/AuthProvider";
-import { getActivityStreak } from "@/lib/activity";
-import { getLibraryEntries } from "@/lib/library";
-import { getCatalogBookById } from "@/lib/mock-data/catalog";
 import { getProfile, setProfile } from "@/lib/profile";
 import { cn } from "@/lib/utils";
 
-type Tab = "account" | "security" | "billing" | "notifications";
+type Tab = "overview" | "account" | "security" | "billing" | "notifications";
 
 const TABS: { id: Tab; label: string; icon: typeof UserRound }[] = [
+  { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "account", label: "Account", icon: UserRound },
   { id: "security", label: "Security", icon: ShieldCheck },
   { id: "billing", label: "Billing", icon: CreditCard },
   { id: "notifications", label: "Notifications", icon: BellRing },
 ];
 
+function ProfileSkeleton() {
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
+        <div className="flex flex-col gap-6">
+          <Skeleton className="h-48 rounded-2xl" />
+          <Skeleton className="h-40 rounded-2xl" />
+          <Skeleton className="h-64 rounded-2xl" />
+        </div>
+        <div className="flex flex-col gap-6">
+          <Skeleton className="h-56 rounded-2xl" />
+          <Skeleton className="h-44 rounded-2xl" />
+          <Skeleton className="h-72 rounded-2xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { user, isReady, signOut, updateName } = useAuth();
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("account");
+  const [tab, setTab] = useState<Tab>("overview");
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
   const [avatar, setAvatar] = useState("");
-  const [stats, setStats] = useState({ streak: 0, finished: 0, hours: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -59,18 +76,6 @@ export default function ProfilePage() {
     const profile = getProfile();
     setBio(profile.bio);
     setAvatar(profile.avatar);
-
-    const entries = getLibraryEntries();
-    const finished = entries.filter((e) => e.certificateEarned);
-    const listenedSec = finished.reduce((total, e) => {
-      const book = getCatalogBookById(e.bookId);
-      return total + (book?.durationSec ?? 0);
-    }, 0);
-    setStats({
-      streak: getActivityStreak(),
-      finished: finished.length,
-      hours: Math.round(listenedSec / 3600),
-    });
   }, [user]);
 
   function handleAvatarFile(file: File) {
@@ -96,13 +101,10 @@ export default function ProfilePage() {
     [user?.name],
   );
 
-  if (!isReady || !user) return null;
-
-  const STAT_CARDS = [
-    { label: "Reading Streak", value: stats.streak, unit: "days", icon: Flame },
-    { label: "Books Finished", value: stats.finished, unit: "volumes", icon: Library },
-    { label: "Total Listening", value: stats.hours, unit: "hours", icon: Headphones },
-  ];
+  // While auth hydrates from localStorage (e.g. on a hard refresh), show a
+  // skeleton instead of a blank screen so the page never looks broken.
+  if (!isReady) return <ProfileSkeleton />;
+  if (!user) return null;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
@@ -147,6 +149,8 @@ export default function ProfilePage() {
             </Badge>
           </div>
 
+          <LevelBadge />
+
           <nav className="glass flex flex-col gap-1 rounded-2xl p-2">
             {TABS.map((t) => {
               const Icon = t.icon;
@@ -185,37 +189,13 @@ export default function ProfilePage() {
         <div className="flex flex-col gap-6">
           <ActivityCard />
 
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={{ visible: { transition: { staggerChildren: 0.08 } } }}
-            className="grid grid-cols-1 gap-4 sm:grid-cols-3"
-          >
-            {STAT_CARDS.map((stat) => {
-              const Icon = stat.icon;
-              return (
-                <motion.div
-                  key={stat.label}
-                  variants={{
-                    hidden: { opacity: 0, y: 16 },
-                    visible: { opacity: 1, y: 0 },
-                  }}
-                  className="glass rounded-2xl p-5"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">{stat.label}</span>
-                    <Icon className="size-4 text-primary" />
-                  </div>
-                  <p className="mt-2 text-3xl font-bold tabular-nums">
-                    <CountUp value={stat.value} />
-                    <span className="ml-1 text-sm font-normal text-muted-foreground">
-                      {stat.unit}
-                    </span>
-                  </p>
-                </motion.div>
-              );
-            })}
-          </motion.div>
+          {tab === "overview" && (
+            <>
+              <ListeningInsights />
+              <AchievementsPanel />
+              <CertificatesGallery />
+            </>
+          )}
 
           {tab === "account" && (
             <div className="glass rounded-2xl p-6">

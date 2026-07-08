@@ -11,7 +11,10 @@ export function ThemeToggle() {
 
   useEffect(() => setMounted(true), []);
 
-  const isDark = resolvedTheme === "dark";
+  // Until mounted, `resolvedTheme` is unknown on the client and would differ
+  // from the server render — keep every attribute deterministic to avoid a
+  // hydration mismatch (which otherwise leaves this subtree un-hydrated).
+  const isDark = mounted && resolvedTheme === "dark";
 
   return (
     <Button

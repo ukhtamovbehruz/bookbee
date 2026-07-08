@@ -4,27 +4,13 @@ export interface LeaderRow {
   isCurrentUser: boolean;
 }
 
-// Fictional community members so a new listener has a leaderboard to climb.
-const MOCK_LEADERS: { name: string; points: number }[] = [
-  { name: "Aziza Karimova", points: 1240 },
-  { name: "Daniel Foster", points: 1085 },
-  { name: "Sardor Rahimov", points: 970 },
-  { name: "Mika Tanaka", points: 815 },
-  { name: "Elena Petrova", points: 690 },
-  { name: "Jamshid Yusupov", points: 560 },
-  { name: "Chloe Bennett", points: 445 },
-  { name: "Omar Haddad", points: 320 },
-  { name: "Nilufar Abdullaeva", points: 210 },
-  { name: "Lucas Meyer", points: 120 },
-];
-
+// The platform has no community yet, so the board reflects real listeners
+// only — that means just the signed-in user (starting at 0 points), or
+// nobody at all when signed out. No fictional members are seeded.
 export function getLeaderboard(
   currentName: string | null,
   currentPoints: number,
 ): LeaderRow[] {
-  const rows: LeaderRow[] = MOCK_LEADERS.map((l) => ({ ...l, isCurrentUser: false }));
-  if (currentName) {
-    rows.push({ name: currentName, points: currentPoints, isCurrentUser: true });
-  }
-  return rows.sort((a, b) => b.points - a.points);
+  if (!currentName) return [];
+  return [{ name: currentName, points: currentPoints, isCurrentUser: true }];
 }

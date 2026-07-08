@@ -106,6 +106,56 @@ export function getWeekActivity(): WeekDay[] {
   return days;
 }
 
+function daysBetween(a: string, b: string): number {
+  const msPerDay = 1000 * 60 * 60 * 24;
+  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / msPerDay);
+}
+
+/** Longest run of consecutive completed days ever recorded. */
+export function getBestStreak(): number {
+  const completed = Object.entries(read())
+    .filter(([, rec]) => rec.seconds >= DAILY_GOAL_SECONDS)
+    .map(([key]) => key)
+    .sort();
+
+  let best = 0;
+  let run = 0;
+  let prev: string | null = null;
+  for (const key of completed) {
+    run = prev && daysBetween(prev, key) === 1 ? run + 1 : 1;
+    best = Math.max(best, run);
+    prev = key;
+  }
+  return best;
+}
+
+/** Total listening seconds accrued across every recorded day. */
+export function getTotalListenSeconds(): number {
+  return Object.values(read()).reduce((total, rec) => total + rec.seconds, 0);
+}
+
+/** Listening seconds accrued Monday–Sunday of the current week. */
+export function getWeekListenSeconds(): number {
+  const store = read();
+  const today = new Date();
+  const dayOfWeek = (today.getDay() + 6) % 7; // 0 = Monday
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - dayOfWeek);
+
+  let total = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    total += store[dateKey(d)]?.seconds ?? 0;
+  }
+  return total;
+}
+
+/** Number of distinct days with any recorded listening. */
+export function getActiveDaysCount(): number {
+  return Object.values(read()).filter((rec) => rec.seconds > 0).length;
+}
+
 export function getActivityStreak(): number {
   const store = read();
   let streak = 0;
