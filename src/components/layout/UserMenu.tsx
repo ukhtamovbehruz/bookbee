@@ -23,7 +23,7 @@ export function UserMenu() {
   const [points, setPoints] = useState(0);
 
   useEffect(() => {
-    const refreshProfile = () => setAvatar(getProfile().avatar);
+    const refreshProfile = () => setAvatar(user ? getProfile(user.email).avatar : "");
     const refreshPoints = () => setPoints(getPoints());
     refreshProfile();
     refreshPoints();
@@ -33,7 +33,7 @@ export function UserMenu() {
       offProfile();
       offActivity();
     };
-  }, []);
+  }, [user]);
 
   if (!user) return null;
 

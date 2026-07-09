@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CoverField } from "@/components/admin/CoverField";
-import { saveCollectionEdit } from "@/lib/mock-data/curation";
+import { createCollection, saveCollectionEdit } from "@/lib/mock-data/curation";
 import { getAllBooks } from "@/lib/mock-data/catalog";
 import type { Collection } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -40,12 +40,21 @@ export function CollectionFormDialog({
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    if (!open || !collection) return;
-    setTitle(collection.title);
-    setDescription(collection.description);
-    setColorHex(collection.colorHex);
-    setCoverUrl(collection.coverUrl ?? "");
-    setBookIds(collection.bookIds);
+    if (!open) return;
+    if (collection) {
+      setTitle(collection.title);
+      setDescription(collection.description);
+      setColorHex(collection.colorHex);
+      setCoverUrl(collection.coverUrl ?? "");
+      setBookIds(collection.bookIds);
+    } else {
+      // create mode — start from a blank collection
+      setTitle("");
+      setDescription("");
+      setColorHex("#F4B400");
+      setCoverUrl("");
+      setBookIds([]);
+    }
     setQuery("");
   }, [open, collection]);
 
@@ -61,19 +70,24 @@ export function CollectionFormDialog({
   }
 
   function handleSave() {
-    if (!collection) return;
     if (!title.trim()) {
       toast.error("Collection title is required.");
       return;
     }
-    saveCollectionEdit(collection.id, {
+    const payload = {
       title: title.trim(),
       description: description.trim(),
       colorHex,
       coverUrl: coverUrl.trim(),
       bookIds,
-    });
-    toast.success(`"${title}" was updated.`);
+    };
+    if (collection) {
+      saveCollectionEdit(collection.id, payload);
+      toast.success(`"${title}" was updated.`);
+    } else {
+      createCollection(payload);
+      toast.success(`"${title}" was created.`);
+    }
     onSaved();
     onOpenChange(false);
   }
@@ -82,9 +96,11 @@ export function CollectionFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Edit collection</DialogTitle>
+          <DialogTitle>{collection ? "Edit collection" : "New collection"}</DialogTitle>
           <DialogDescription>
-            Update the cover, details, and which books belong to this collection.
+            {collection
+              ? "Update the cover, details, and which books belong to this collection."
+              : "Create a collection with a cover, details, and the books it features."}
           </DialogDescription>
         </DialogHeader>
 
@@ -158,7 +174,9 @@ export function CollectionFormDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Save changes</Button>
+          <Button onClick={handleSave}>
+            {collection ? "Save changes" : "Create collection"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

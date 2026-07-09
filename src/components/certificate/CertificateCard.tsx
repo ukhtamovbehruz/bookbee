@@ -124,41 +124,12 @@ export const CertificateCard = forwardRef<HTMLDivElement, { data: CertificateDat
             textAlign: "center",
           }}
         >
-          {/* crest */}
-          <div style={{ position: "relative", marginBottom: 4 }}>
-            <span
-              style={{
-                position: "absolute",
-                top: -20,
-                left: "50%",
-                transform: "translateX(-50%)",
-                fontSize: 22,
-                color: GOLD,
-              }}
-            >
-              ♛
-            </span>
-            <div
-              style={{
-                width: 76,
-                height: 76,
-                borderRadius: "50%",
-                background: "#fff",
-                border: `3px solid ${GOLD}`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: `0 0 0 4px ${NAVY}`,
-              }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/bookbee-logo-full.svg" alt="BookBee" width={46} height={46} />
-            </div>
-          </div>
+          {/* crown emblem (brand logo intentionally omitted) */}
+          <div style={{ fontSize: 30, color: GOLD, lineHeight: 1, marginBottom: 2 }}>♛</div>
 
           <div
             style={{
-              fontSize: 22,
+              fontSize: 24,
               fontWeight: 700,
               color: NAVY,
               letterSpacing: 0.5,

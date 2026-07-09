@@ -4,6 +4,8 @@ import { collections as seedCollections } from "./collections";
 import { notifyCatalogChanged, onCatalogChanged } from "./catalog-events";
 
 const COLLECTION_EDITS_KEY = "bookbee_collection_edits";
+const CUSTOM_COLLECTIONS_KEY = "bookbee_custom_collections";
+const DELETED_COLLECTIONS_KEY = "bookbee_deleted_collections";
 
 export interface CollectionEdit {
   title?: string;
@@ -26,6 +28,39 @@ export function saveCollectionEdit(id: string, edit: CollectionEdit): void {
   notifyCatalogChanged();
 }
 
+function getCustomCollections(): Collection[] {
+  return readStorage<Collection[]>(CUSTOM_COLLECTIONS_KEY, []);
+}
+
+function getDeletedCollectionIds(): string[] {
+  return readStorage<string[]>(DELETED_COLLECTIONS_KEY, []);
+}
+
+/** Admin: create a brand-new collection. */
+export function createCollection(data: Omit<Collection, "id">): Collection {
+  const collection: Collection = { id: `custom-collection-${Date.now()}`, ...data };
+  writeStorage(CUSTOM_COLLECTIONS_KEY, [...getCustomCollections(), collection]);
+  notifyCatalogChanged();
+  return collection;
+}
+
+/** Admin: remove a collection — hides seed ones, drops custom ones. */
+export function deleteCollection(id: string): void {
+  const custom = getCustomCollections();
+  if (custom.some((c) => c.id === id)) {
+    writeStorage(CUSTOM_COLLECTIONS_KEY, custom.filter((c) => c.id !== id));
+  } else {
+    const deleted = getDeletedCollectionIds();
+    if (!deleted.includes(id)) writeStorage(DELETED_COLLECTIONS_KEY, [...deleted, id]);
+  }
+  const edits = getCollectionEdits();
+  if (edits[id]) {
+    delete edits[id];
+    writeStorage(COLLECTION_EDITS_KEY, edits);
+  }
+  notifyCatalogChanged();
+}
+
 function applyEdit(collection: Collection, edit: CollectionEdit | undefined): Collection {
   if (!edit) return collection;
   return {
@@ -40,13 +75,16 @@ function applyEdit(collection: Collection, edit: CollectionEdit | undefined): Co
 
 export function getAllCollections(): Collection[] {
   const edits = getCollectionEdits();
-  return seedCollections.map((c) => applyEdit(c, edits[c.id]));
+  const deleted = new Set(getDeletedCollectionIds());
+  return [...seedCollections, ...getCustomCollections()]
+    .filter((c) => !deleted.has(c.id))
+    .map((c) => applyEdit(c, edits[c.id]));
 }
 
 export function getCatalogCollectionById(id: string): Collection | undefined {
-  const edits = getCollectionEdits();
-  const base = seedCollections.find((c) => c.id === id);
-  return base ? applyEdit(base, edits[id]) : undefined;
+  if (getDeletedCollectionIds().includes(id)) return undefined;
+  const base = [...seedCollections, ...getCustomCollections()].find((c) => c.id === id);
+  return base ? applyEdit(base, getCollectionEdits()[id]) : undefined;
 }
 
 export { onCatalogChanged };

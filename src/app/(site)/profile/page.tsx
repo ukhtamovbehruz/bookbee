@@ -73,18 +73,18 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) return;
     setName(user.name);
-    const profile = getProfile();
+    const profile = getProfile(user.email);
     setBio(profile.bio);
     setAvatar(profile.avatar);
   }, [user]);
 
   function handleAvatarFile(file: File) {
-    if (!file.type.startsWith("image/")) return;
+    if (!file.type.startsWith("image/") || !user) return;
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = String(reader.result);
       setAvatar(dataUrl);
-      setProfile({ avatar: dataUrl });
+      setProfile(user.email, { avatar: dataUrl });
       toast.success("Profile picture updated.");
     };
     reader.readAsDataURL(file);
@@ -205,7 +205,7 @@ export default function ProfilePage() {
                 onSubmit={(e) => {
                   e.preventDefault();
                   updateName(name);
-                  setProfile({ bio });
+                  setProfile(user.email, { bio });
                   toast.success("Profile updated.");
                 }}
               >

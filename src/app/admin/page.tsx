@@ -28,6 +28,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogoIcon } from "@/components/layout/LogoIcon";
 import { DonutChart } from "@/components/admin/Charts";
 import { BookFormDialog } from "@/components/admin/BookFormDialog";
@@ -37,7 +38,8 @@ import { CountUp } from "@/components/shared/CountUp";
 import { useAdminSession } from "@/hooks/useAdminSession";
 import { categories } from "@/lib/mock-data/categories";
 import { getAdminBooks, deleteBook, saveBookEdit } from "@/lib/mock-data/catalog";
-import { getAllCollections } from "@/lib/mock-data/curation";
+import { getAllCollections, deleteCollection } from "@/lib/mock-data/curation";
+import { getProfile } from "@/lib/profile";
 import { getPlatformMetrics, timeAgo } from "@/lib/metrics";
 import { readStorage } from "@/lib/local-storage";
 import { cn, formatDuration } from "@/lib/utils";
@@ -67,7 +69,8 @@ export default function AdminDashboardPage() {
   const [tick, setTick] = useState(0);
   const [bookDialogOpen, setBookDialogOpen] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | undefined>(undefined);
-  const [collectionDialog, setCollectionDialog] = useState<Collection | null>(null);
+  const [collectionDialogOpen, setCollectionDialogOpen] = useState(false);
+  const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
   const [quizBook, setQuizBook] = useState<Book | null>(null);
   const [query, setQuery] = useState("");
 
@@ -461,52 +464,93 @@ export default function AdminDashboardPage() {
 
         {section === "curation" && (
           <div className="max-w-5xl space-y-5">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Curation</h1>
-              <p className="text-sm text-muted-foreground">
-                Edit collection covers, details, and which books they feature.
-              </p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Curation</h1>
+                <p className="text-sm text-muted-foreground">
+                  Create, edit, or remove collections — covers, details, and their books.
+                </p>
+              </div>
+              <Button
+                className="gap-2 rounded-full"
+                onClick={() => {
+                  setEditingCollection(null);
+                  setCollectionDialogOpen(true);
+                }}
+              >
+                <Plus className="size-4" />
+                New collection
+              </Button>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {collections.map((collection) => (
-                <div key={collection.id} className="glass flex items-center gap-4 rounded-2xl p-4">
-                  <div
-                    className="relative size-16 shrink-0 overflow-hidden rounded-xl"
-                    style={{ background: `${collection.colorHex}33` }}
-                  >
-                    {collection.coverUrl ? (
-                      <Image src={collection.coverUrl} alt="" fill sizes="64px" className="object-cover" />
-                    ) : (
-                      <Sparkles
-                        className="absolute inset-0 m-auto size-6"
-                        style={{ color: collection.colorHex }}
-                      />
-                    )}
+            {collections.length === 0 ? (
+              <div className="glass rounded-2xl p-10 text-center">
+                <Sparkles className="mx-auto size-8 text-muted-foreground/50" />
+                <p className="mt-3 text-sm text-muted-foreground">No collections yet.</p>
+                <p className="text-xs text-muted-foreground/70">
+                  Create one to feature it on the homepage.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {collections.map((collection) => (
+                  <div key={collection.id} className="glass flex items-center gap-4 rounded-2xl p-4">
+                    <div
+                      className="relative size-16 shrink-0 overflow-hidden rounded-xl"
+                      style={{ background: `${collection.colorHex}33` }}
+                    >
+                      {collection.coverUrl ? (
+                        <Image src={collection.coverUrl} alt="" fill sizes="64px" className="object-cover" />
+                      ) : (
+                        <Sparkles
+                          className="absolute inset-0 m-auto size-6"
+                          style={{ color: collection.colorHex }}
+                        />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{collection.title}</p>
+                      <p className="text-xs text-muted-foreground">{collection.bookIds.length} books</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() => {
+                          setEditingCollection(collection);
+                          setCollectionDialogOpen(true);
+                        }}
+                      >
+                        <Pencil className="size-3.5" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Delete ${collection.title}`}
+                        onClick={() => {
+                          deleteCollection(collection.id);
+                          refresh();
+                          toast.info(`Removed "${collection.title}".`);
+                        }}
+                      >
+                        <Trash2 className="size-4 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{collection.title}</p>
-                    <p className="text-xs text-muted-foreground">{collection.bookIds.length} books</p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={() => setCollectionDialog(collection)}
-                  >
-                    <Pencil className="size-3.5" />
-                    Edit
-                  </Button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {section === "users" && (
-          <div className="max-w-3xl space-y-5">
+          <div className="max-w-4xl space-y-5">
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Users</h1>
-              <p className="text-sm text-muted-foreground">{users.length} members</p>
+              <p className="text-sm text-muted-foreground">
+                {users.length} {users.length === 1 ? "member" : "members"}
+              </p>
             </div>
             {users.length === 0 ? (
               <div className="glass rounded-2xl p-10 text-center">
@@ -519,19 +563,34 @@ export default function AdminDashboardPage() {
                 </p>
               </div>
             ) : (
-              <div className="glass divide-y divide-border rounded-2xl">
-                {users.map((u, i) => (
-                  <div key={`${u.email}-${i}`} className="flex items-center gap-3 p-4">
-                    <span className="flex size-9 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
-                      {u.name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase()}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{u.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {users.map((u, i) => {
+                  const avatar = getProfile(u.email).avatar;
+                  const initials = u.name
+                    .split(" ")
+                    .map((p) => p[0])
+                    .slice(0, 2)
+                    .join("")
+                    .toUpperCase();
+                  return (
+                    <div key={`${u.email}-${i}`} className="glass flex items-center gap-3 rounded-2xl p-4">
+                      <Avatar className="size-11">
+                        {avatar ? (
+                          <AvatarImage src={avatar} alt={u.name} />
+                        ) : (
+                          <AvatarFallback className="bg-primary/15 text-sm font-semibold text-primary">
+                            {initials}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{u.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+                      </div>
+                      <Badge variant="secondary" className="text-[10px]">Listener</Badge>
                     </div>
-                    <Badge variant="secondary" className="text-[10px]">Listener</Badge>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -579,9 +638,9 @@ export default function AdminDashboardPage() {
         onSaved={refresh}
       />
       <CollectionFormDialog
-        open={collectionDialog !== null}
-        onOpenChange={(o) => !o && setCollectionDialog(null)}
-        collection={collectionDialog}
+        open={collectionDialogOpen}
+        onOpenChange={setCollectionDialogOpen}
+        collection={editingCollection}
         onSaved={refresh}
       />
       <QuizEditorDialog

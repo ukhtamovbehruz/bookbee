@@ -8,12 +8,31 @@ export interface ProfileExtras {
 const PROFILE_KEY = "bookbee_profile";
 const PROFILE_EVENT = "bookbee:profile-changed";
 
-export function getProfile(): ProfileExtras {
-  return readStorage<ProfileExtras>(PROFILE_KEY, { bio: "", avatar: "" });
+// Profiles are keyed by account email so each member keeps their own bio and
+// avatar (and so the admin panel can show the right picture per user).
+type ProfileStore = Record<string, ProfileExtras>;
+
+const EMPTY: ProfileExtras = { bio: "", avatar: "" };
+
+function normalize(email: string): string {
+  return email.trim().toLowerCase();
 }
 
-export function setProfile(extras: Partial<ProfileExtras>): void {
-  writeStorage(PROFILE_KEY, { ...getProfile(), ...extras });
+function readStore(): ProfileStore {
+  return readStorage<ProfileStore>(PROFILE_KEY, {});
+}
+
+export function getProfile(email: string): ProfileExtras {
+  if (!email) return EMPTY;
+  return readStore()[normalize(email)] ?? EMPTY;
+}
+
+export function setProfile(email: string, extras: Partial<ProfileExtras>): void {
+  if (!email) return;
+  const key = normalize(email);
+  const store = readStore();
+  store[key] = { ...EMPTY, ...store[key], ...extras };
+  writeStorage(PROFILE_KEY, store);
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(PROFILE_EVENT));
   }
