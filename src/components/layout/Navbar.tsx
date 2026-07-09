@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Menu } from "lucide-react";
 import { Logo } from "@/components/layout/Logo";
-import { SearchCommandDialog } from "@/components/layout/SearchCommandDialog";
+import { SearchTrigger } from "@/components/layout/SearchTrigger";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { PointsPill } from "@/components/layout/PointsPill";
@@ -50,7 +50,7 @@ export function Navbar() {
         </nav>
 
         <div className="flex flex-1 items-center justify-end gap-2 sm:gap-3">
-          <SearchCommandDialog />
+          <SearchTrigger />
           <PointsPill />
           <ThemeToggle />
           <PremiumButton className="hidden sm:inline-flex" />

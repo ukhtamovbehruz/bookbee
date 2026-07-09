@@ -4,31 +4,48 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   BookOpen,
+  CalendarCheck,
+  CalendarDays,
   Coins,
+  Crown,
   Flame,
   GraduationCap,
+  Headphones,
   Library,
   Lock,
+  Radio,
   Rocket,
   Sparkles,
   Target,
+  Trophy,
   Zap,
   type LucideIcon,
 } from "lucide-react";
 import { getAchievements, type Achievement } from "@/lib/achievements";
 import { getLibraryEntries } from "@/lib/library";
 import { getPoints } from "@/lib/points";
-import { getBestStreak, onActivityChanged } from "@/lib/activity";
+import {
+  getActiveDaysCount,
+  getBestStreak,
+  getTotalListenSeconds,
+  onActivityChanged,
+} from "@/lib/activity";
 import { cn } from "@/lib/utils";
 
 const ICONS: Record<string, LucideIcon> = {
   Sparkles,
   Coins,
   Rocket,
+  Crown,
   BookOpen,
   GraduationCap,
+  Trophy,
   Flame,
   Zap,
+  CalendarCheck,
+  CalendarDays,
+  Headphones,
+  Radio,
   Target,
   Library,
 };
@@ -49,6 +66,8 @@ export function AchievementsPanel() {
             (max, e) => Math.max(max, e.quizScore ?? 0),
             0,
           ),
+          totalHours: Math.floor(getTotalListenSeconds() / 3600),
+          activeDays: getActiveDaysCount(),
         }),
       );
     };

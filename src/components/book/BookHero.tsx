@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Pause, Play, Star, Users } from "lucide-react";
+import { Languages, Pause, Play, RotateCcw, Star, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BookActions } from "@/components/book/BookActions";
@@ -11,6 +11,7 @@ import { useAudioPlayer } from "@/components/player/AudioPlayerProvider";
 import { useGuardedPlay } from "@/hooks/useGuardedPlay";
 import { useLiveListenerCount } from "@/hooks/useLiveListenerCount";
 import { getEffectiveRating } from "@/lib/ratings";
+import { getPlaybackProgress, onPlaybackChanged } from "@/lib/playback-progress";
 import { formatCount, formatDuration } from "@/lib/utils";
 import type { Book } from "@/lib/types";
 
@@ -20,10 +21,20 @@ export function BookHero({ book }: { book: Book }) {
   const isCurrent = currentBook?.id === book.id;
   const liveListenerCount = useLiveListenerCount(book);
   const [effectiveRating, setEffectiveRating] = useState(() => getEffectiveRating(book));
+  const [hasProgress, setHasProgress] = useState(false);
 
   useEffect(() => {
     setEffectiveRating(getEffectiveRating(book));
   }, [book]);
+
+  useEffect(() => {
+    const refresh = () => setHasProgress(Boolean(getPlaybackProgress(book.id)));
+    refresh();
+    return onPlaybackChanged(refresh);
+  }, [book.id]);
+
+  const showResume = hasProgress && !(isCurrent && isPlaying);
+  const playLabel = isCurrent && isPlaying ? "Pause" : showResume ? "Resume" : "Play";
 
   return (
     <section className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
@@ -56,6 +67,24 @@ export function BookHero({ book }: { book: Book }) {
             {book.title}
           </h1>
           <p className="text-lg text-muted-foreground">{book.author}</p>
+
+          {(book.language === "uz" || book.language === "ru") && (
+            <div className="flex items-start gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-sm">
+              <Languages className="mt-0.5 size-4 shrink-0 text-primary" />
+              <span>
+                <span className="font-semibold text-foreground">
+                  {book.language === "uz"
+                    ? "Uzbek-language audiobook"
+                    : "Russian-language audiobook"}
+                </span>
+                <span className="ml-1 text-muted-foreground">
+                  {book.language === "uz"
+                    ? "This audiobook is narrated in Uzbek."
+                    : "This audiobook is narrated in Russian."}
+                </span>
+              </span>
+            </div>
+          )}
 
           <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm text-muted-foreground sm:grid-cols-3">
             <div>
@@ -96,10 +125,12 @@ export function BookHero({ book }: { book: Book }) {
             >
               {isCurrent && isPlaying ? (
                 <Pause className="size-4 fill-current" />
+              ) : showResume ? (
+                <RotateCcw className="size-4" />
               ) : (
                 <Play className="size-4 fill-current" />
               )}
-              {isCurrent && isPlaying ? "Pause" : "Play"}
+              {playLabel}
             </Button>
             <BookActions book={book} />
           </div>

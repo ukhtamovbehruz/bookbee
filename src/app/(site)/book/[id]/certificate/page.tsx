@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
-import { Award, Printer } from "lucide-react";
+import { Download, Loader2, Share2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { CertificateCard } from "@/components/certificate/CertificateCard";
 import { useAuth } from "@/context/AuthProvider";
 import { getBookById } from "@/lib/mock-data/books";
 import { getCustomBookById } from "@/lib/mock-data/custom-books";
@@ -19,6 +20,8 @@ export default function CertificatePage() {
   const { user, isReady } = useAuth();
   const [book, setBook] = useState<Book | null | undefined>(undefined);
   const [entry, setEntry] = useState<LibraryEntry | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+  const certRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setBook(getBookById(params.id) ?? getCustomBookById(params.id) ?? null);
@@ -46,70 +49,91 @@ export default function CertificatePage() {
   }
 
   const finishedDate = entry.finishedAt
-    ? new Date(entry.finishedAt).toLocaleDateString(undefined, {
+    ? new Date(entry.finishedAt).toLocaleDateString("en-GB", {
         year: "numeric",
         month: "long",
         day: "numeric",
       })
-    : "";
+    : new Date().toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" });
+
+  const fileSlug = book.title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "");
+
+  async function downloadPdf() {
+    const node = certRef.current;
+    if (!node) return;
+    setBusy(true);
+    try {
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import("html2canvas-pro"),
+        import("jspdf"),
+      ]);
+      const canvas = await html2canvas(node, {
+        scale: 2,
+        backgroundColor: "#f7f2e5",
+        useCORS: true,
+        logging: false,
+      });
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "px",
+        format: [canvas.width, canvas.height],
+      });
+      pdf.addImage(imgData, "JPEG", 0, 0, canvas.width, canvas.height);
+      pdf.save(`BookBee-Certificate-${fileSlug}.pdf`);
+      toast.success("Certificate downloaded.");
+    } catch {
+      toast.error("Could not generate the certificate PDF. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function share() {
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "My BookBee Certificate",
+          text: `I earned a BookBee Certificate of Achievement for “${book!.title}”!`,
+          url,
+        });
+        return;
+      } catch {
+        /* user cancelled or unsupported — fall through to copy */
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Certificate link copied to clipboard.");
+    } catch {
+      toast.error("Could not share the certificate.");
+    }
+  }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-      <div className="print:hidden mb-6 flex justify-end">
-        <Button className="gap-2 rounded-full" onClick={() => window.print()}>
-          <Printer className="size-4" />
-          Print / Save as PDF
+    <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mb-6 flex flex-wrap justify-end gap-3">
+        <Button variant="outline" className="gap-2 rounded-full" onClick={share}>
+          <Share2 className="size-4" />
+          Share
+        </Button>
+        <Button className="gap-2 rounded-full" onClick={downloadPdf} disabled={busy}>
+          {busy ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+          {busy ? "Generating…" : "Download PDF"}
         </Button>
       </div>
 
-      <div className="relative overflow-hidden rounded-3xl border-2 border-primary/30 bg-gradient-to-br from-card via-card to-[#151022] p-10 text-center sm:p-16">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 border-[12px] border-double border-primary/10"
-        />
-        <div className="relative flex flex-col items-center">
-          <div className="flex flex-col items-center gap-2">
-            <Image
-              src="/bookbee-logo-full.svg"
-              alt="BookBee"
-              width={64}
-              height={64}
-              className="size-14"
-            />
-            <span className="text-lg font-bold uppercase tracking-[0.35em]">
-              BookBee
-            </span>
-          </div>
-
-          <span className="mt-8 flex size-16 items-center justify-center rounded-full bg-primary/15 text-primary">
-            <Award className="size-8" />
-          </span>
-
-          <p className="mt-6 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-            Certificate of Completion
-          </p>
-          <p className="mt-6 text-sm text-muted-foreground">This certifies that</p>
-          <p className="mt-2 text-2xl font-bold sm:text-3xl">{user.name}</p>
-          <p className="mt-6 text-sm text-muted-foreground">
-            has successfully completed the audiobook
-          </p>
-          <p className="mt-2 max-w-lg text-xl font-semibold text-foreground sm:text-2xl">
-            &ldquo;{book.title}&rdquo;
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">by {book.author}</p>
-
-          <div className="mt-8 flex items-center gap-8 text-sm text-muted-foreground">
-            <div>
-              <p className="text-xs uppercase tracking-wide">Score</p>
-              <p className="font-medium text-foreground">{entry.quizScore}/10</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide">Date</p>
-              <p className="font-medium text-foreground">{finishedDate}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <CertificateCard
+        ref={certRef}
+        data={{
+          recipient: user.name,
+          bookTitle: book.title,
+          bookAuthor: book.author,
+          score: entry.quizScore,
+          date: finishedDate,
+        }}
+      />
     </div>
   );
 }

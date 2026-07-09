@@ -14,6 +14,7 @@ import { SKIP_BACKWARD_SEC, SKIP_FORWARD_SEC } from "@/lib/constants";
 import { incrementPlayCount } from "@/lib/listeners";
 import { recordListenSeconds } from "@/lib/activity";
 import { resolveAudioSrc } from "@/lib/audio-store";
+import { getPlaybackProgress, savePlaybackProgress } from "@/lib/playback-progress";
 
 interface AudioPlayerContextValue {
   currentBook: Book | null;
@@ -52,6 +53,8 @@ export function useAudioPlayer() {
 
 export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement>(null);
+  // Position to seek to once the next chapter's metadata has loaded (for resume).
+  const pendingSeekRef = useRef(0);
 
   const [currentBook, setCurrentBook] = useState<Book | null>(null);
   const [currentChapter, setCurrentChapter] = useState<Chapter | null>(null);
@@ -64,29 +67,61 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const [playbackRate, setPlaybackRateState] = useState(1);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const playChapter = useCallback((book: Book, chapter: Chapter) => {
+  // Mirror the current book/chapter into refs so timers can persist progress
+  // without re-subscribing on every change.
+  const currentBookRef = useRef<Book | null>(null);
+  const currentChapterRef = useRef<Chapter | null>(null);
+  currentBookRef.current = currentBook;
+  currentChapterRef.current = currentChapter;
+
+  const persistProgress = useCallback(() => {
     const audio = audioRef.current;
-    if (!audio) return;
-    setCurrentBook(book);
-    setCurrentChapter(chapter);
-    setIsLoading(true);
-    setCurrentTime(0);
-    audio.currentTime = 0;
-    // Resolve idb: / blob refs (uploaded mp3s) to a playable URL
-    resolveAudioSrc(chapter.audioUrl).then((src) => {
-      audio.src = src;
-      audio.play().catch(() => setIsPlaying(false));
-    });
+    const book = currentBookRef.current;
+    const chapter = currentChapterRef.current;
+    if (audio && book && chapter && audio.currentTime > 0) {
+      savePlaybackProgress(book.id, chapter.id, audio.currentTime);
+    }
   }, []);
+
+  const playChapter = useCallback(
+    (book: Book, chapter: Chapter, startAt = 0) => {
+      const audio = audioRef.current;
+      if (!audio) return;
+      setCurrentBook(book);
+      setCurrentChapter(chapter);
+      setIsLoading(true);
+      setCurrentTime(startAt);
+      pendingSeekRef.current = startAt;
+      audio.currentTime = 0;
+      // Resolve idb: / blob refs (uploaded mp3s) to a playable URL
+      resolveAudioSrc(chapter.audioUrl).then((src) => {
+        audio.src = src;
+        audio.play().catch(() => setIsPlaying(false));
+      });
+    },
+    [],
+  );
 
   const playBook = useCallback(
     (book: Book, chapterId?: string) => {
-      const chapter = chapterId
-        ? (book.chapters.find((c) => c.id === chapterId) ?? book.chapters[0])
-        : book.chapters[0];
+      // An explicit chapter starts fresh; otherwise resume where the listener
+      // stopped, if we have a saved position for this book.
+      if (chapterId) {
+        const chapter = book.chapters.find((c) => c.id === chapterId) ?? book.chapters[0];
+        if (!chapter) return;
+        incrementPlayCount(book.id);
+        playChapter(book, chapter);
+        return;
+      }
+
+      const saved = getPlaybackProgress(book.id);
+      const resumeChapter = saved
+        ? book.chapters.find((c) => c.id === saved.chapterId)
+        : undefined;
+      const chapter = resumeChapter ?? book.chapters[0];
       if (!chapter) return;
       incrementPlayCount(book.id);
-      playChapter(book, chapter);
+      playChapter(book, chapter, resumeChapter ? saved!.positionSec : 0);
     },
     [playChapter],
   );
@@ -169,6 +204,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const setExpanded = useCallback((expanded: boolean) => setIsExpanded(expanded), []);
 
   const closePlayer = useCallback(() => {
+    persistProgress();
     const audio = audioRef.current;
     if (audio) {
       audio.pause();
@@ -180,7 +216,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     setIsExpanded(false);
     setCurrentTime(0);
     setDuration(0);
-  }, []);
+  }, [persistProgress]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -190,13 +226,17 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Track real listening time toward the daily goal / BookBee Points.
+  // Track real listening time toward the daily goal / BookBee Points, and
+  // remember the position so the listener can resume where they stopped.
   useEffect(() => {
     if (!isPlaying) return;
     const STEP = 5;
-    const interval = setInterval(() => recordListenSeconds(STEP), STEP * 1000);
+    const interval = setInterval(() => {
+      recordListenSeconds(STEP);
+      persistProgress();
+    }, STEP * 1000);
     return () => clearInterval(interval);
-  }, [isPlaying]);
+  }, [isPlaying, persistProgress]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -206,12 +246,20 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     const onLoadedMetadata = () => {
       setDuration(audio.duration || 0);
       setIsLoading(false);
+      // Resume: seek to the saved position once the media is ready.
+      if (pendingSeekRef.current > 0) {
+        audio.currentTime = Math.min(pendingSeekRef.current, audio.duration || pendingSeekRef.current);
+        pendingSeekRef.current = 0;
+      }
     };
     const onEnded = () => nextChapter();
     const onWaiting = () => setIsLoading(true);
     const onCanPlay = () => setIsLoading(false);
     const onPlay = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
+    const onPause = () => {
+      setIsPlaying(false);
+      persistProgress();
+    };
 
     audio.addEventListener("timeupdate", onTimeUpdate);
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
@@ -230,7 +278,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
     };
-  }, [nextChapter]);
+  }, [nextChapter, persistProgress]);
 
   const value: AudioPlayerContextValue = {
     currentBook,
