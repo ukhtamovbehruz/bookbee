@@ -62,6 +62,32 @@ const SLIDES: Slide[] = [
     accent: "#22C55E",
     covers: getNewReleases(3),
   },
+  {
+    eyebrow: "Earn as you listen",
+    title: "Turn listening into a",
+    highlight: "streak.",
+    subtitle:
+      "Hit your daily goal to earn BookBee Points, build streaks, and climb the leaderboard.",
+    ctaLabel: "View leaderboard",
+    ctaHref: "/leaderboard",
+    from: "#2a1a12",
+    to: "#0b0b0f",
+    accent: "#F97316",
+    covers: getTrendingBooks(3),
+  },
+  {
+    eyebrow: "New every week",
+    title: "Fresh audiobooks, just",
+    highlight: "landed.",
+    subtitle:
+      "Discover just-added titles across every category, updated all the time.",
+    ctaLabel: "See new releases",
+    ctaHref: "#new-releases",
+    from: "#12212a",
+    to: "#0b0b0f",
+    accent: "#38BDF8",
+    covers: getMostPopularBooks(3),
+  },
 ];
 
 export function HeroCarousel() {

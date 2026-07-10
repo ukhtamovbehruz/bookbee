@@ -1,5 +1,6 @@
 import { HeroCarousel } from "@/components/home/HeroCarousel";
-import { ContinueListeningRail } from "@/components/home/ContinueListeningRail";
+import { ContinueActivityRow } from "@/components/home/ContinueActivityRow";
+import { PromoBannerStrip } from "@/components/home/PromoBannerStrip";
 import { TrendingBooksRail } from "@/components/home/TrendingBooksRail";
 import { CategoriesGrid } from "@/components/home/CategoriesGrid";
 import { FeaturedCollections } from "@/components/home/FeaturedCollections";
@@ -13,7 +14,7 @@ export default function Home() {
     <div className="flex flex-col gap-16 pb-24 sm:gap-20">
       <HeroCarousel />
       <FadeInSection>
-        <ContinueListeningRail />
+        <ContinueActivityRow />
       </FadeInSection>
       <FadeInSection>
         <TrendingBooksRail />
@@ -23,6 +24,9 @@ export default function Home() {
       </FadeInSection>
       <FadeInSection>
         <FeaturedCollections />
+      </FadeInSection>
+      <FadeInSection>
+        <PromoBannerStrip />
       </FadeInSection>
       <FadeInSection>
         <NewReleasesGrid />
