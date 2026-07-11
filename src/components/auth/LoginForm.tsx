@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -71,12 +70,12 @@ export function LoginForm() {
 
       <form
         className="mt-6 space-y-4"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
           const form = new FormData(e.currentTarget);
           const email = String(form.get("email") ?? "").trim();
           const password = String(form.get("password") ?? "");
-          const success = signIn(email, password);
+          const success = await signIn(email, password);
           if (success) router.push("/");
         }}
       >

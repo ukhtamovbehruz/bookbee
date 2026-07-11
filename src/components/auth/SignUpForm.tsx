@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +28,7 @@ export function SignUpForm() {
 
       <form
         className="mt-6 space-y-4"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
           const form = new FormData(e.currentTarget);
           const name = String(form.get("name") ?? "").trim();
@@ -37,7 +36,7 @@ export function SignUpForm() {
           const password = String(form.get("password") ?? "");
 
           setIsSubmitting(true);
-          const success = signUp(name, email, password);
+          const success = await signUp(name, email, password);
           setIsSubmitting(false);
           if (success) router.push("/");
         }}
@@ -82,7 +81,16 @@ export function SignUpForm() {
         type="button"
         variant="outline"
         className="h-11 w-full gap-2 rounded-full"
-        onClick={() => toast.info("Google sign-in isn't wired up yet in this demo.")}
+        onClick={async () => {
+          const { createClient } = await import("@/lib/supabase/client");
+          const supabase = createClient();
+          await supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: {
+              redirectTo: `${window.location.origin}/auth/callback`,
+            },
+          });
+        }}
       >
         <GoogleIcon className="size-4" />
         Continue with Google

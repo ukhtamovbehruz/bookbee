@@ -36,12 +36,12 @@ import { CollectionFormDialog } from "@/components/admin/CollectionFormDialog";
 import { QuizEditorDialog } from "@/components/admin/QuizEditorDialog";
 import { CountUp } from "@/components/shared/CountUp";
 import { useAdminSession } from "@/hooks/useAdminSession";
+import { ADMIN_PASSWORD } from "@/lib/admin";
 import { categories } from "@/lib/mock-data/categories";
 import { getAdminBooks, deleteBook, saveBookEdit } from "@/lib/mock-data/catalog";
 import { getAllCollections, deleteCollection } from "@/lib/mock-data/curation";
 import { getProfile } from "@/lib/profile";
 import { getPlatformMetrics, timeAgo } from "@/lib/metrics";
-import { readStorage } from "@/lib/local-storage";
 import { cn, formatDuration } from "@/lib/utils";
 import type { Book, Collection } from "@/lib/types";
 
@@ -73,10 +73,38 @@ export default function AdminDashboardPage() {
   const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
   const [quizBook, setQuizBook] = useState<Book | null>(null);
   const [query, setQuery] = useState("");
+  const [users, setUsers] = useState<{ name: string; email: string }[]>([]);
+  const [usersError, setUsersError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isReady && !isAdmin) router.replace("/admin/login");
   }, [isReady, isAdmin, router]);
+
+  // Registered members live in Supabase Auth, not this browser. Fetch them
+  // through the server route (guarded by the admin secret) so the panel shows
+  // everyone who signed up on any device.
+  useEffect(() => {
+    if (!isAdmin) return;
+    let active = true;
+    fetch("/api/admin/users", { headers: { "x-admin-secret": ADMIN_PASSWORD } })
+      .then(async (res) => {
+        const json = await res.json().catch(() => ({}));
+        if (!active) return;
+        if (!res.ok) {
+          setUsersError(json.error ?? "Failed to load users.");
+          setUsers([]);
+          return;
+        }
+        setUsersError(null);
+        setUsers(json.users ?? []);
+      })
+      .catch((err) => {
+        if (active) setUsersError(String(err));
+      });
+    return () => {
+      active = false;
+    };
+  }, [isAdmin, tick]);
 
   const refresh = () => setTick((t) => t + 1);
 
@@ -101,15 +129,13 @@ export default function AdminDashboardPage() {
       ? Math.round((topGenre.value / totalGenreTitles) * 100)
       : 0;
 
-  const users = readStorage<{ name: string; email: string }[]>("bookbee_accounts", []);
-
   const filteredBooks = adminBooks.filter((b) =>
     `${b.title} ${b.author}`.toLowerCase().includes(query.trim().toLowerCase()),
   );
 
   const STATS = [
     { label: "Total Plays", value: metrics.totalPlays, decimals: 0, icon: PlayCircle },
-    { label: "Registered Users", value: metrics.registeredUsers, decimals: 0, icon: UsersIcon },
+    { label: "Registered Users", value: users.length, decimals: 0, icon: UsersIcon },
     { label: "Total Titles", value: metrics.totalTitles, decimals: 0, icon: BookOpen },
     { label: "Certificates Issued", value: metrics.certificatesIssued, decimals: 0, icon: Award },
   ];
@@ -552,7 +578,15 @@ export default function AdminDashboardPage() {
                 {users.length} {users.length === 1 ? "member" : "members"}
               </p>
             </div>
-            {users.length === 0 ? (
+            {usersError ? (
+              <div className="glass rounded-2xl p-10 text-center">
+                <UsersIcon className="mx-auto size-8 text-muted-foreground/50" />
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Couldn&apos;t load members from Supabase.
+                </p>
+                <p className="text-xs text-muted-foreground/70">{usersError}</p>
+              </div>
+            ) : users.length === 0 ? (
               <div className="glass rounded-2xl p-10 text-center">
                 <UsersIcon className="mx-auto size-8 text-muted-foreground/50" />
                 <p className="mt-3 text-sm text-muted-foreground">
@@ -613,7 +647,7 @@ export default function AdminDashboardPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span>Data storage</span>
-                <span className="text-muted-foreground">Local (demo)</span>
+                <span className="text-muted-foreground">Supabase Auth + local</span>
               </div>
               <Button
                 variant="outline"

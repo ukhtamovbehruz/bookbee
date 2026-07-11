@@ -9,29 +9,23 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
-import { readStorage, writeStorage } from "@/lib/local-storage";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 
 export interface AuthUser {
   name: string;
   email: string;
 }
 
-interface StoredAccount extends AuthUser {
-  password: string;
-}
-
 interface AuthContextValue {
   user: AuthUser | null;
   isReady: boolean;
-  signUp: (name: string, email: string, password: string) => boolean;
-  signIn: (email: string, password: string) => boolean;
-  signOut: () => void;
-  requestPasswordReset: (email: string) => void;
-  updateName: (name: string) => void;
+  signUp: (name: string, email: string, password: string) => Promise<boolean>;
+  signIn: (email: string, password: string) => Promise<boolean>;
+  signOut: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  updateName: (name: string) => Promise<void>;
 }
-
-const ACCOUNTS_KEY = "bookbee_accounts";
-const SESSION_KEY = "bookbee_session";
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -41,86 +35,138 @@ export function useAuth() {
   return ctx;
 }
 
+/**
+ * Derive the `{ name, email }` shape the rest of the app expects from a
+ * Supabase auth user. The display name lives in user_metadata — set by our
+ * sign-up form (`name`) or supplied by Google OAuth (`full_name`/`name`).
+ */
+function toAuthUser(u: SupabaseUser | null | undefined): AuthUser | null {
+  if (!u) return null;
+  const meta = u.user_metadata ?? {};
+  const metaName = typeof meta.name === "string" ? meta.name : "";
+  const metaFullName = typeof meta.full_name === "string" ? meta.full_name : "";
+  const fallback = u.email ? u.email.split("@")[0] : "Listener";
+  return {
+    name: metaName || metaFullName || fallback,
+    email: (u.email ?? "").toLowerCase(),
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [supabase] = useState(() => createClient());
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    setUser(readStorage<AuthUser | null>(SESSION_KEY, null));
-    setIsReady(true);
-  }, []);
+    let active = true;
 
-  const signUp = useCallback((name: string, email: string, password: string) => {
-    const accounts = readStorage<StoredAccount[]>(ACCOUNTS_KEY, []);
-    const normalizedEmail = email.trim().toLowerCase();
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      setUser(toAuthUser(data.session?.user));
+      setIsReady(true);
+    });
 
-    if (accounts.some((a) => a.email === normalizedEmail)) {
-      toast.error("An account with this email already exists — try logging in instead.");
-      return false;
-    }
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(toAuthUser(session?.user));
+      setIsReady(true);
+    });
 
-    const account: StoredAccount = { name, email: normalizedEmail, password };
-    writeStorage(ACCOUNTS_KEY, [...accounts, account]);
-    const nextUser = { name, email: normalizedEmail };
-    writeStorage(SESSION_KEY, nextUser);
-    setUser(nextUser);
-    toast.success(`Welcome to BookBee, ${name}!`);
-    return true;
-  }, []);
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [supabase]);
 
-  const signIn = useCallback((email: string, password: string) => {
-    const accounts = readStorage<StoredAccount[]>(ACCOUNTS_KEY, []);
-    const normalizedEmail = email.trim().toLowerCase();
-    const account = accounts.find((a) => a.email === normalizedEmail);
+  const signUp = useCallback(
+    async (name: string, email: string, password: string) => {
+      const normalizedEmail = email.trim().toLowerCase();
+      const trimmedName = name.trim();
+      const { data, error } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: {
+          data: { name: trimmedName },
+          emailRedirectTo:
+            typeof window !== "undefined"
+              ? `${window.location.origin}/auth/callback`
+              : undefined,
+        },
+      });
 
-    if (!account) {
-      toast.error("No account found with that email. Try signing up instead.");
-      return false;
-    }
-    if (account.password !== password) {
-      toast.error("Incorrect password. Please try again.");
-      return false;
-    }
+      if (error) {
+        toast.error(error.message);
+        return false;
+      }
+      // When email confirmation is enabled in Supabase, no session is returned
+      // until the user clicks the link in their inbox.
+      if (!data.session) {
+        toast.success("Account created! Check your email to confirm, then log in.");
+        return false;
+      }
+      toast.success(`Welcome to BookBee, ${trimmedName}!`);
+      return true;
+    },
+    [supabase],
+  );
 
-    const nextUser = { name: account.name, email: account.email };
-    writeStorage(SESSION_KEY, nextUser);
-    setUser(nextUser);
-    toast.success(`Welcome back, ${account.name}!`);
-    return true;
-  }, []);
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+      if (error) {
+        toast.error(
+          error.message === "Invalid login credentials"
+            ? "Incorrect email or password. Please try again."
+            : error.message,
+        );
+        return false;
+      }
+      toast.success(`Welcome back, ${toAuthUser(data.user)?.name ?? "friend"}!`);
+      return true;
+    },
+    [supabase],
+  );
 
-  const signOut = useCallback(() => {
-    writeStorage(SESSION_KEY, null);
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut();
     setUser(null);
     toast.info("You've been signed out.");
-  }, []);
+  }, [supabase]);
 
-  const requestPasswordReset = useCallback((email: string) => {
-    const accounts = readStorage<StoredAccount[]>(ACCOUNTS_KEY, []);
-    const normalizedEmail = email.trim().toLowerCase();
-    const account = accounts.find((a) => a.email === normalizedEmail);
-
-    if (!account) {
-      toast.error("No account found with that email.");
-      return;
-    }
-    toast.success(`Password reset instructions sent to ${email}.`);
-  }, []);
+  const requestPasswordReset = useCallback(
+    async (email: string) => {
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        email.trim().toLowerCase(),
+        {
+          redirectTo:
+            typeof window !== "undefined"
+              ? `${window.location.origin}/login`
+              : undefined,
+        },
+      );
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success(`Password reset instructions sent to ${email}.`);
+    },
+    [supabase],
+  );
 
   const updateName = useCallback(
-    (name: string) => {
+    async (name: string) => {
       const trimmed = name.trim();
-      if (!trimmed || !user) return;
-      const accounts = readStorage<StoredAccount[]>(ACCOUNTS_KEY, []);
-      const nextAccounts = accounts.map((a) =>
-        a.email === user.email ? { ...a, name: trimmed } : a,
-      );
-      writeStorage(ACCOUNTS_KEY, nextAccounts);
-      const nextUser = { ...user, name: trimmed };
-      writeStorage(SESSION_KEY, nextUser);
-      setUser(nextUser);
+      if (!trimmed) return;
+      const { error } = await supabase.auth.updateUser({ data: { name: trimmed } });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      setUser((prev) => (prev ? { ...prev, name: trimmed } : prev));
     },
-    [user],
+    [supabase],
   );
 
   return (

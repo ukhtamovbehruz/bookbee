@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-BookBee is a **frontend-only** audiobook platform MVP (Next.js 15 App Router, React 19, TypeScript, Tailwind v4). There is **no backend, database, or real API**. Everything that looks like server state — accounts, admin, the book catalog's edits, library, ratings, points, discussions, playback position, per-user profiles — is persisted in the browser via `localStorage` (and IndexedDB for uploaded audio). Treat "persistence" as per-browser and client-only. The UI is **English only**.
+BookBee is a mostly **frontend-only** audiobook platform MVP (Next.js 15 App Router, React 19, TypeScript, Tailwind v4). The book catalog's edits, admin content, library, ratings, points, discussions, playback position, and per-user profiles are persisted in the browser via `localStorage` (and IndexedDB for uploaded audio) — treat that "persistence" as per-browser and client-only. **The one real backend is Supabase Auth**: user accounts (email/password + Google OAuth) live in Supabase, so sign-ups are global/cross-device and the admin Users list reflects everyone (see the auth section below). The UI is **English only**.
 
 ## Commands
 
@@ -60,7 +60,7 @@ All keys are prefixed `bookbee_` and accessed through `src/lib/local-storage.ts`
 
 | Module | Key(s) | What it holds |
 | --- | --- | --- |
-| `context/AuthProvider.tsx` | `bookbee_session`, `bookbee_accounts` | current session + registered accounts |
+| `context/AuthProvider.tsx` | — (Supabase Auth) | current session + accounts live in **Supabase**, not localStorage (see auth section) |
 | `hooks/useAdminSession.ts` | `bookbee_admin_session` | admin login flag (creds in `lib/admin.ts`) |
 | `lib/profile.ts` | `bookbee_profile` | **per-account** bio + avatar, keyed by email |
 | `lib/library.ts` | `bookbee_library` | saved books, finished/quiz/certificate state |
@@ -75,6 +75,11 @@ All keys are prefixed `bookbee_` and accessed through `src/lib/local-storage.ts`
 | `lib/mock-data/curation.ts` | `bookbee_collection_edits`, `bookbee_custom_collections`, `bookbee_deleted_collections` | collection overrides + CRUD |
 
 **Profiles are keyed by email** (`getProfile(email)` / `setProfile(email, extras)`), so each account keeps its own avatar/bio and the admin panel can show the right picture per user. Call sites pass `user.email`.
+
+### Authentication (Supabase — the only real backend)
+Accounts are **not** localStorage. `context/AuthProvider.tsx` wraps Supabase Auth and still exposes the same `{ user: { name, email }, isReady, signUp, signIn, signOut, requestPasswordReset, updateName }` shape, so the rest of the app is unchanged — but the methods are now **async** (`signUp`/`signIn` return `Promise<boolean>`; callers `await`). `name` comes from `user_metadata.name` (our sign-up form) or `full_name` (Google OAuth). Browser client: `lib/supabase/client.ts` (`createBrowserClient`, uses `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`). Google OAuth buttons on both `/login` and `/signup` call `signInWithOAuth` and return via `src/app/auth/callback/route.ts`.
+
+The **admin Users list is server-side**: `src/app/api/admin/users/route.ts` uses `lib/supabase/admin.ts` (service-role client, `SUPABASE_SECRET_KEY`, **server-only, never `NEXT_PUBLIC_`**) to `auth.admin.listUsers()`, guarded by the `x-admin-secret` header (= `ADMIN_PASSWORD`). `admin/page.tsx` fetches it into state; if `SUPABASE_SECRET_KEY` is unset the section degrades to an error card. Env vars required in Vercel **and** `.env.local`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SECRET_KEY`. **Still per-browser localStorage (not yet migrated):** library, ratings, points, plays, certificates, discussions, profiles — so those admin metrics reflect only the admin's own browser.
 
 ### Audio, resume & gamification
 - Playback is gated behind sign-up via `hooks/useGuardedPlay.ts` — call sites use it instead of `playBook` directly so anonymous users are redirected to `/signup`.
