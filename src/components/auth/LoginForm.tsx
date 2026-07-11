@@ -124,7 +124,16 @@ export function LoginForm() {
         type="button"
         variant="outline"
         className="h-11 w-full gap-2 rounded-full"
-        onClick={() => toast.info("Google sign-in isn't wired up yet in this demo.")}
+        onClick={async () => {
+          const { createClient } = await import("@/lib/supabase/client");
+          const supabase = createClient();
+          await supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: {
+              redirectTo: `${window.location.origin}/auth/callback`,
+            },
+          });
+        }}
       >
         <GoogleIcon className="size-4" />
         Continue with Google
