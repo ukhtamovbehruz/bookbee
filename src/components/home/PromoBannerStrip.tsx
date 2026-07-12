@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
@@ -14,7 +14,8 @@ import {
   Crown,
   type LucideIcon,
 } from "lucide-react";
-import { getTrendingBooks, getNewReleases } from "@/lib/mock-data/books";
+import { books as seedBooks } from "@/lib/mock-data/books";
+import { getAllBooks, onCatalogChanged } from "@/lib/mock-data/catalog";
 import type { Book } from "@/lib/types";
 
 interface Banner {
@@ -30,62 +31,85 @@ interface Banner {
   cover?: Book;
 }
 
-const BANNERS: Banner[] = [
-  {
-    eyebrow: "Book of the Week",
-    title: getTrendingBooks(1)[0]?.title ?? "This week's pick",
-    subtitle: "Our most-loved listen right now — start it in one tap.",
-    ctaLabel: "Listen now",
-    ctaHref: getTrendingBooks(1)[0] ? `/book/${getTrendingBooks(1)[0].id}` : "#trending",
-    from: "#1d2b4a",
-    to: "#0b0b0f",
-    accent: "#38BDF8",
-    icon: Headphones,
-    cover: getTrendingBooks(1)[0],
-  },
-  {
-    eyebrow: "Daily streak",
-    title: "Keep your streak alive",
-    subtitle: "Listen 7 minutes a day to earn BookBee Points and climb the leaderboard.",
-    ctaLabel: "View leaderboard",
-    ctaHref: "/leaderboard",
-    from: "#2a1a12",
-    to: "#0b0b0f",
-    accent: "#F97316",
-    icon: Flame,
-  },
-  {
-    eyebrow: "Fresh arrivals",
-    title: "New this week",
-    subtitle: "Just-added titles across business, psychology, and more.",
-    ctaLabel: "Browse new releases",
-    ctaHref: "#new-releases",
-    from: "#0f2a24",
-    to: "#0b0b0f",
-    accent: "#22C55E",
-    icon: Sparkles,
-    cover: getNewReleases(1)[0],
-  },
-  {
-    eyebrow: "BookBee Premium",
-    title: "Unlock offline listening",
-    subtitle: "Unlimited downloads, AI chapter summaries, and zero ads.",
-    ctaLabel: "See Premium",
-    ctaHref: "#premium",
-    from: "#241a3a",
-    to: "#0b0b0f",
-    accent: "#A78BFA",
-    icon: Crown,
-  },
-];
+function buildBanners(allBooks: Book[]): Banner[] {
+  const featured = [...allBooks].sort(
+    (a, b) => b.listenerCount - a.listenerCount,
+  )[0];
+  const fresh = [...allBooks]
+    .filter((b) => b.isNew)
+    .sort(
+      (a, b) =>
+        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+    )[0];
+
+  return [
+    {
+      eyebrow: "Book of the Week",
+      title: featured?.title ?? "This week's pick",
+      subtitle: "Our most-loved listen right now — start it in one tap.",
+      ctaLabel: "Listen now",
+      ctaHref: featured ? `/book/${featured.id}` : "#trending",
+      from: "#1d2b4a",
+      to: "#0b0b0f",
+      accent: "#38BDF8",
+      icon: Headphones,
+      cover: featured,
+    },
+    {
+      eyebrow: "Daily streak",
+      title: "Keep your streak alive",
+      subtitle:
+        "Listen 7 minutes a day to earn BookBee Points and climb the leaderboard.",
+      ctaLabel: "View leaderboard",
+      ctaHref: "/leaderboard",
+      from: "#2a1a12",
+      to: "#0b0b0f",
+      accent: "#F97316",
+      icon: Flame,
+    },
+    {
+      eyebrow: "Fresh arrivals",
+      title: "New this week",
+      subtitle: "Just-added titles across business, psychology, and more.",
+      ctaLabel: "Browse new releases",
+      ctaHref: "#new-releases",
+      from: "#0f2a24",
+      to: "#0b0b0f",
+      accent: "#22C55E",
+      icon: Sparkles,
+      cover: fresh,
+    },
+    {
+      eyebrow: "BookBee Premium",
+      title: "Unlock offline listening",
+      subtitle: "Unlimited downloads, AI chapter summaries, and zero ads.",
+      ctaLabel: "See Premium",
+      ctaHref: "#premium",
+      from: "#241a3a",
+      to: "#0b0b0f",
+      accent: "#A78BFA",
+      icon: Crown,
+    },
+  ];
+}
 
 export function PromoBannerStrip() {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  // Seed catalog for first paint; merged catalog (admin edits) after mount.
+  const [allBooks, setAllBooks] = useState<Book[]>(seedBooks);
+
+  useEffect(() => {
+    const refresh = () => setAllBooks(getAllBooks());
+    refresh();
+    return onCatalogChanged(refresh);
+  }, []);
+
+  const banners = useMemo(() => buildBanners(allBooks), [allBooks]);
 
   const go = useCallback(
-    (dir: number) => setIndex((i) => (i + dir + BANNERS.length) % BANNERS.length),
-    [],
+    (dir: number) => setIndex((i) => (i + dir + banners.length) % banners.length),
+    [banners.length],
   );
 
   useEffect(() => {
@@ -94,7 +118,7 @@ export function PromoBannerStrip() {
     return () => clearInterval(timer);
   }, [paused, go]);
 
-  const banner = BANNERS[index];
+  const banner = banners[index];
   const Icon = banner.icon;
 
   return (
@@ -178,7 +202,7 @@ export function PromoBannerStrip() {
         </button>
 
         <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2">
-          {BANNERS.map((_, i) => (
+          {banners.map((_, i) => (
             <button
               key={i}
               type="button"

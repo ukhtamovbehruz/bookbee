@@ -11,39 +11,38 @@ export function StickyPlayer() {
   if (!currentBook) return null;
 
   return (
-    <motion.div
-      initial={{ y: 80, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ type: "spring", stiffness: 260, damping: 30 }}
-      className="fixed inset-x-0 bottom-0 z-50 hairline-t glass-strong"
-    >
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent"
-      />
-      <AnimatePresence mode="wait" initial={false}>
-        {isExpanded ? (
+    <>
+      {/* Full-screen "now playing" — mounted only when expanded. */}
+      <AnimatePresence>
+        {isExpanded && (
           <motion.div
             key="expanded"
-            initial={{ opacity: 0, y: 24 }}
+            initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 24 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
+            exit={{ opacity: 0, y: 40 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="fixed inset-0 z-[60]"
           >
             <ExpandedPlayer />
           </motion.div>
-        ) : (
-          <motion.div
-            key="mini"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 12 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-          >
-            <MiniPlayer />
-          </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+
+      {/* Docked mini bar — hidden while the full-screen player is open. */}
+      {!isExpanded && (
+        <motion.div
+          initial={{ y: 80, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 260, damping: 30 }}
+          className="fixed inset-x-0 bottom-0 z-50 hairline-t glass-strong"
+        >
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent"
+          />
+          <MiniPlayer />
+        </motion.div>
+      )}
+    </>
   );
 }

@@ -6,13 +6,15 @@ import { motion } from "framer-motion";
 import { Headphones, Quote, Sparkles, Star } from "lucide-react";
 import { Logo } from "@/components/layout/Logo";
 import { books } from "@/lib/mock-data/books";
-import type { ReactNode } from "react";
+import { getCatalogBookById, onCatalogChanged } from "@/lib/mock-data/catalog";
+import type { Book } from "@/lib/types";
+import { useEffect, useState, type ReactNode } from "react";
 
-const SHOWCASE = [
-  books.find((b) => b.id === "atomic-habits"),
-  books.find((b) => b.id === "sapiens"),
-  books.find((b) => b.id === "1984"),
-].filter((b): b is NonNullable<typeof b> => Boolean(b));
+const SHOWCASE_IDS = ["atomic-habits", "sapiens", "1984"];
+
+const SEED_SHOWCASE = SHOWCASE_IDS.map((id) =>
+  books.find((b) => b.id === id),
+).filter((b): b is Book => Boolean(b));
 
 export function AuthSplitLayout({
   mode,
@@ -22,6 +24,21 @@ export function AuthSplitLayout({
   children: ReactNode;
 }) {
   const imageOnLeft = mode === "signup";
+
+  // Seed covers on first paint, then swap in admin cover edits after mount so
+  // the auth pages reflect the same catalog as the rest of the app.
+  const [showcase, setShowcase] = useState<Book[]>(SEED_SHOWCASE);
+
+  useEffect(() => {
+    const refresh = () =>
+      setShowcase(
+        SHOWCASE_IDS.map((id) => getCatalogBookById(id)).filter(
+          (b): b is Book => Boolean(b),
+        ),
+      );
+    refresh();
+    return onCatalogChanged(refresh);
+  }, []);
 
   const brandPanel = (
     <motion.div
@@ -42,7 +59,7 @@ export function AuthSplitLayout({
 
       {/* floating book covers */}
       <div className="relative z-10 my-8 flex items-end justify-center gap-4">
-        {SHOWCASE.map((book, i) => (
+        {showcase.map((book, i) => (
           <motion.div
             key={book.id}
             initial={{ opacity: 0, y: 24 }}

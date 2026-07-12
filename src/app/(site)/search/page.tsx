@@ -141,7 +141,7 @@ export default function SearchPage() {
   }, [catalog, query, filters, hasQuery]);
 
   const recommended = useMemo(
-    () => [...catalog].sort((a, b) => b.rating - a.rating).slice(0, 12),
+    () => [...catalog].sort((a, b) => b.listenerCount - a.listenerCount).slice(0, 12),
     [catalog],
   );
 

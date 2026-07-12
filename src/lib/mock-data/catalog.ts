@@ -141,8 +141,10 @@ export function getCatalogNewReleases(limit = 12): Book[] {
 }
 
 export function getCatalogMostPopular(limit = 10): Book[] {
+  // Ratings are all 0 until real listeners rate titles, so popularity is
+  // ranked by listener count.
   return [...getAllBooks()]
-    .sort((a, b) => b.rating * b.ratingCount - a.rating * a.ratingCount)
+    .sort((a, b) => b.listenerCount - a.listenerCount)
     .slice(0, limit);
 }
 

@@ -562,8 +562,10 @@ export const books: Book[] = seeds.map((seed) => {
     categoryIds: seed.categoryIds,
     language: seed.language ?? "en",
     durationSec,
-    rating: seed.rating,
-    ratingCount: seed.ratingCount,
+    // Ratings start at 0.0 — no listeners have rated these titles yet. A real
+    // rating only surfaces once a user submits one (see getEffectiveRating).
+    rating: 0,
+    ratingCount: 0,
     listenerCount: seed.listenerCount,
     isPremium: seed.isPremium ?? false,
     isNew: seed.isNew ?? false,
@@ -611,8 +613,10 @@ export function getNewReleases(limit = 12): Book[] {
 }
 
 export function getMostPopularBooks(limit = 10): Book[] {
+  // Ratings are all 0 until real listeners rate titles, so popularity is
+  // ranked by listener count.
   return [...books]
-    .sort((a, b) => b.rating * b.ratingCount - a.rating * a.ratingCount)
+    .sort((a, b) => b.listenerCount - a.listenerCount)
     .slice(0, limit);
 }
 

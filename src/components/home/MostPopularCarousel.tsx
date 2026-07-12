@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Play, Star } from "lucide-react";
+import { Play, Star, Users } from "lucide-react";
 import { SectionHeading } from "@/components/shared/SectionHeading";
+import { Badge } from "@/components/ui/badge";
 import {
   Carousel,
   CarouselContent,
@@ -14,68 +15,83 @@ import {
 import { useGuardedPlay } from "@/hooks/useGuardedPlay";
 import { useCatalog } from "@/hooks/useCatalog";
 import { getMostPopularBooks } from "@/lib/mock-data/books";
-import { formatCount, formatDuration } from "@/lib/utils";
+import { formatCount } from "@/lib/utils";
 import type { Book } from "@/lib/types";
 
 const POPULAR = (books: Book[]) =>
   [...books]
-    .sort((a, b) => b.rating * b.ratingCount - a.rating * a.ratingCount)
-    .slice(0, 10);
+    .sort((a, b) => b.listenerCount - a.listenerCount)
+    .slice(0, 12);
 
 export function MostPopularCarousel() {
   const guardedPlay = useGuardedPlay();
-  const popular = useCatalog(POPULAR, getMostPopularBooks(10));
+  const popular = useCatalog(POPULAR, getMostPopularBooks(12));
 
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <SectionHeading title="Most Popular Books" className="mb-5" />
       <Carousel opts={{ align: "start", dragFree: true }}>
         <CarouselContent>
-          {popular.map((book) => (
+          {popular.map((book, i) => (
             <CarouselItem
               key={book.id}
-              className="basis-[70%] sm:basis-[42%] md:basis-[32%] lg:basis-[24%]"
+              className="basis-[42%] sm:basis-[30%] md:basis-[22%] lg:basis-[18%]"
             >
               <Link
                 href={`/book/${book.id}`}
-                className="group relative block aspect-16/9 overflow-hidden rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl"
               >
-                <Image
-                  src={book.coverUrl}
-                  alt=""
-                  fill
-                  sizes="(max-width: 640px) 70vw, 320px"
-                  className="object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+                <div className="relative aspect-2/3 overflow-hidden rounded-2xl bg-muted shadow-lg shadow-black/30">
+                  <Image
+                    src={book.coverUrl}
+                    alt=""
+                    fill
+                    sizes="(max-width: 640px) 42vw, 220px"
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
 
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    guardedPlay(book);
-                  }}
-                  aria-label={`Play ${book.title}`}
-                  className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-lg transition-all group-hover:opacity-100 hover:scale-110"
-                >
-                  <Play className="size-4 fill-current ml-0.5" />
-                </button>
+                  {/* rank */}
+                  <span className="absolute left-2 top-2 flex size-7 items-center justify-center rounded-full bg-black/55 text-xs font-bold text-white backdrop-blur-sm">
+                    {i + 1}
+                  </span>
 
-                <div className="absolute inset-x-0 bottom-0 p-4">
-                  <p className="truncate font-semibold text-white">
+                  {book.isPremium && (
+                    <Badge className="absolute right-2 top-2 bg-primary text-primary-foreground">
+                      Premium
+                    </Badge>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      guardedPlay(book);
+                    }}
+                    aria-label={`Play ${book.title}`}
+                    className="absolute bottom-2 right-2 flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-lg transition-all group-hover:opacity-100 hover:scale-110"
+                  >
+                    <Play className="size-4 fill-current ml-0.5" />
+                  </button>
+                </div>
+
+                <div className="mt-2.5 space-y-0.5">
+                  <p className="truncate text-sm font-semibold text-foreground">
                     {book.title}
                   </p>
-                  <p className="truncate text-sm text-white/70">{book.author}</p>
-                  <div className="mt-1.5 flex items-center gap-2 text-xs text-white/70">
+                  <p className="truncate text-xs text-muted-foreground">
+                    {book.author}
+                  </p>
+                  <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
                     <span className="flex items-center gap-0.5">
                       <Star className="size-3 fill-primary text-primary" />
                       {book.rating.toFixed(1)}
                     </span>
                     <span aria-hidden="true">·</span>
-                    <span>{formatDuration(book.durationSec)}</span>
-                    <span aria-hidden="true">·</span>
-                    <span>{formatCount(book.listenerCount)} listeners</span>
+                    <span className="flex items-center gap-1">
+                      <Users className="size-3" />
+                      {formatCount(book.listenerCount)}
+                    </span>
                   </div>
                 </div>
               </Link>

@@ -29,6 +29,9 @@ interface AudioPlayerContextValue {
   isExpanded: boolean;
   playBook: (book: Book, chapterId?: string) => void;
   togglePlayPause: () => void;
+  pause: () => void;
+  sleepTimerMinutes: number | null;
+  setSleepTimer: (minutes: number | null) => void;
   seekTo: (seconds: number) => void;
   skipForward: (seconds?: number) => void;
   skipBackward: (seconds?: number) => void;
@@ -66,6 +69,10 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   const [isMuted, setIsMuted] = useState(false);
   const [playbackRate, setPlaybackRateState] = useState(1);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [sleepTimerMinutes, setSleepTimerMinutesState] = useState<number | null>(
+    null,
+  );
+  const sleepTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Mirror the current book/chapter into refs so timers can persist progress
   // without re-subscribing on every change.
@@ -136,6 +143,29 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [isPlaying, currentBook]);
 
+  const pause = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio) audio.pause();
+  }, []);
+
+  // Auto-pause after N minutes. Lives in the provider (not the expanded player)
+  // so the countdown keeps running when the player is collapsed to the mini bar.
+  const setSleepTimer = useCallback((minutes: number | null) => {
+    if (sleepTimeoutRef.current) {
+      clearTimeout(sleepTimeoutRef.current);
+      sleepTimeoutRef.current = null;
+    }
+    setSleepTimerMinutesState(minutes);
+    if (minutes && minutes > 0) {
+      sleepTimeoutRef.current = setTimeout(() => {
+        const audio = audioRef.current;
+        if (audio) audio.pause();
+        sleepTimeoutRef.current = null;
+        setSleepTimerMinutesState(null);
+      }, minutes * 60_000);
+    }
+  }, []);
+
   const seekTo = useCallback((seconds: number) => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -205,6 +235,11 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
   const closePlayer = useCallback(() => {
     persistProgress();
+    if (sleepTimeoutRef.current) {
+      clearTimeout(sleepTimeoutRef.current);
+      sleepTimeoutRef.current = null;
+    }
+    setSleepTimerMinutesState(null);
     const audio = audioRef.current;
     if (audio) {
       audio.pause();
@@ -293,6 +328,9 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     isExpanded,
     playBook,
     togglePlayPause,
+    pause,
+    sleepTimerMinutes,
+    setSleepTimer,
     seekTo,
     skipForward,
     skipBackward,

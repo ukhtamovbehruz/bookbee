@@ -1,13 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Headphones, Play, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getTrendingBooks, getMostPopularBooks, getNewReleases } from "@/lib/mock-data/books";
+import { books as seedBooks } from "@/lib/mock-data/books";
+import { getAllBooks, onCatalogChanged } from "@/lib/mock-data/catalog";
 import type { Book } from "@/lib/types";
+
+/** Which slice of the catalog a slide pulls its cover art from. */
+type CoverKey = "top" | "next" | "new";
 
 interface Slide {
   eyebrow: string;
@@ -19,7 +23,7 @@ interface Slide {
   from: string;
   to: string;
   accent: string;
-  covers: Book[];
+  coverKey: CoverKey;
 }
 
 const SLIDES: Slide[] = [
@@ -34,7 +38,7 @@ const SLIDES: Slide[] = [
     from: "#241a3a",
     to: "#0b0b0f",
     accent: "#6C4CF1",
-    covers: getTrendingBooks(3),
+    coverKey: "top",
   },
   {
     eyebrow: "1,000+ titles narrated by pros",
@@ -47,7 +51,7 @@ const SLIDES: Slide[] = [
     from: "#2a2412",
     to: "#0b0b0f",
     accent: "#F4B400",
-    covers: getMostPopularBooks(3),
+    coverKey: "next",
   },
   {
     eyebrow: "BookBee Premium",
@@ -60,7 +64,7 @@ const SLIDES: Slide[] = [
     from: "#0f2a24",
     to: "#0b0b0f",
     accent: "#22C55E",
-    covers: getNewReleases(3),
+    coverKey: "new",
   },
   {
     eyebrow: "Earn as you listen",
@@ -73,7 +77,7 @@ const SLIDES: Slide[] = [
     from: "#2a1a12",
     to: "#0b0b0f",
     accent: "#F97316",
-    covers: getTrendingBooks(3),
+    coverKey: "top",
   },
   {
     eyebrow: "New every week",
@@ -86,13 +90,40 @@ const SLIDES: Slide[] = [
     from: "#12212a",
     to: "#0b0b0f",
     accent: "#38BDF8",
-    covers: getMostPopularBooks(3),
+    coverKey: "next",
   },
 ];
 
 export function HeroCarousel() {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  // Start from the seed catalog for a deterministic first paint, then swap in
+  // the merged catalog (admin cover edits + custom books) after mount.
+  const [allBooks, setAllBooks] = useState<Book[]>(seedBooks);
+
+  useEffect(() => {
+    const refresh = () => setAllBooks(getAllBooks());
+    refresh();
+    return onCatalogChanged(refresh);
+  }, []);
+
+  const coversByKey = useMemo<Record<CoverKey, Book[]>>(() => {
+    const byListeners = [...allBooks].sort(
+      (a, b) => b.listenerCount - a.listenerCount,
+    );
+    const newest = [...allBooks]
+      .filter((b) => b.isNew)
+      .sort(
+        (a, b) =>
+          new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+      );
+    const top = byListeners.slice(0, 3);
+    return {
+      top,
+      next: byListeners.slice(3, 6),
+      new: newest.slice(0, 3).length >= 3 ? newest.slice(0, 3) : top,
+    };
+  }, [allBooks]);
 
   const next = useCallback(() => setIndex((i) => (i + 1) % SLIDES.length), []);
 
@@ -103,6 +134,7 @@ export function HeroCarousel() {
   }, [paused, next]);
 
   const slide = SLIDES[index];
+  const covers = coversByKey[slide.coverKey];
 
   return (
     <section className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
@@ -184,7 +216,7 @@ export function HeroCarousel() {
 
               <div className="relative hidden h-full items-center justify-center lg:flex">
                 <div className="relative flex items-end gap-3">
-                  {slide.covers.map((book, i) => (
+                  {covers.map((book, i) => (
                     <motion.div
                       key={book.id}
                       initial={{ opacity: 0, y: 30, rotate: 0 }}
