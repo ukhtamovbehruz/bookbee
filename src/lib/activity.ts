@@ -1,5 +1,8 @@
 import { readStorage, writeStorage } from "@/lib/local-storage";
 import { addPoints } from "@/lib/points";
+import { notifyActivityChanged, onActivityChanged } from "@/lib/activity-events";
+
+export { onActivityChanged };
 
 export const DAILY_GOAL_SECONDS = 7 * 60; // listen 7 minutes to complete the day
 export const DAILY_POINTS = 25;
@@ -12,7 +15,6 @@ interface DayRecord {
 type ActivityStore = Record<string, DayRecord>;
 
 const ACTIVITY_KEY = "bookbee_activity";
-const ACTIVITY_EVENT = "bookbee:activity-changed";
 
 function dateKey(d = new Date()): string {
   return d.toISOString().slice(0, 10);
@@ -20,12 +22,6 @@ function dateKey(d = new Date()): string {
 
 function read(): ActivityStore {
   return readStorage<ActivityStore>(ACTIVITY_KEY, {});
-}
-
-export function onActivityChanged(handler: () => void): () => void {
-  if (typeof window === "undefined") return () => {};
-  window.addEventListener(ACTIVITY_EVENT, handler);
-  return () => window.removeEventListener(ACTIVITY_EVENT, handler);
 }
 
 export function recordListenSeconds(sec: number): void {
@@ -46,9 +42,7 @@ export function recordListenSeconds(sec: number): void {
 
   if (awardedNow) addPoints(DAILY_POINTS);
 
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(ACTIVITY_EVENT));
-  }
+  notifyActivityChanged();
 }
 
 export interface TodayActivity {

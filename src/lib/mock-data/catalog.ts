@@ -1,5 +1,5 @@
 import type { Book, BookLanguage, Chapter } from "@/lib/types";
-import { readStorage, writeStorage } from "@/lib/local-storage";
+import { readCatalogStore, writeCatalogStore } from "./catalog-store";
 import { books as seedBooks } from "./books";
 import { getCustomBooks, removeCustomBook } from "./custom-books";
 import { generateChapters } from "./chapters";
@@ -29,23 +29,21 @@ export interface BookEdit {
 type BookEditsStore = Record<string, BookEdit>;
 
 export function getBookEdits(): BookEditsStore {
-  return readStorage<BookEditsStore>(BOOK_EDITS_KEY, {});
+  return readCatalogStore<BookEditsStore>(BOOK_EDITS_KEY, {});
 }
 
-export function saveBookEdit(bookId: string, edit: BookEdit): void {
+export async function saveBookEdit(bookId: string, edit: BookEdit): Promise<void> {
   const store = getBookEdits();
   store[bookId] = { ...store[bookId], ...edit };
-  writeStorage(BOOK_EDITS_KEY, store);
-  notifyCatalogChanged();
+  await writeCatalogStore(BOOK_EDITS_KEY, store);
 }
 
 /** Remove a book from the catalog: delete custom books, hide seed books. */
-export function deleteBook(bookId: string): void {
+export async function deleteBook(bookId: string): Promise<void> {
   if (isSeedBook(bookId)) {
-    saveBookEdit(bookId, { hidden: true });
+    await saveBookEdit(bookId, { hidden: true });
   } else {
-    removeCustomBook(bookId);
-    notifyCatalogChanged();
+    await removeCustomBook(bookId);
   }
 }
 

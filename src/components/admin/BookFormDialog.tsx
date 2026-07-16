@@ -106,7 +106,7 @@ export function BookFormDialog({
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!form.title.trim() || !form.author.trim()) {
       toast.error("Title and author are required.");
       return;
@@ -128,38 +128,43 @@ export function BookFormDialog({
     }));
     const durationSec = chapters.reduce((sum, c) => sum + c.durationSec, 0);
 
-    if (isEdit && book) {
-      saveBookEdit(book.id, {
-        title: form.title.trim(),
-        author: form.author.trim(),
-        narrator: form.narrator.trim() || form.author.trim(),
-        publisher: form.publisher.trim() || "BookBee Originals",
-        description: form.description.trim(),
-        coverUrl: form.coverUrl.trim(),
-        categoryIds: form.categoryIds,
-        language: form.language,
-        durationSec,
-        isPremium: form.isPremium,
-        tags: form.tags,
-        chapters: chapters.map((c, i) => ({ ...c, id: `${book.id}-ch-${i + 1}` })),
-      });
-      toast.success(`"${form.title}" was updated.`);
-    } else {
-      addCustomBook({
-        title: form.title.trim(),
-        author: form.author.trim(),
-        narrator: form.narrator.trim(),
-        publisher: form.publisher.trim(),
-        description: form.description.trim(),
-        categoryIds: form.categoryIds,
-        language: form.language,
-        durationSec,
-        isPremium: form.isPremium,
-        coverUrl: form.coverUrl.trim(),
-        tags: form.tags,
-        chapters,
-      });
-      toast.success(`"${form.title}" was added to the library.`);
+    try {
+      if (isEdit && book) {
+        await saveBookEdit(book.id, {
+          title: form.title.trim(),
+          author: form.author.trim(),
+          narrator: form.narrator.trim() || form.author.trim(),
+          publisher: form.publisher.trim() || "BookBee Originals",
+          description: form.description.trim(),
+          coverUrl: form.coverUrl.trim(),
+          categoryIds: form.categoryIds,
+          language: form.language,
+          durationSec,
+          isPremium: form.isPremium,
+          tags: form.tags,
+          chapters: chapters.map((c, i) => ({ ...c, id: `${book.id}-ch-${i + 1}` })),
+        });
+        toast.success(`"${form.title}" was updated.`);
+      } else {
+        await addCustomBook({
+          title: form.title.trim(),
+          author: form.author.trim(),
+          narrator: form.narrator.trim(),
+          publisher: form.publisher.trim(),
+          description: form.description.trim(),
+          categoryIds: form.categoryIds,
+          language: form.language,
+          durationSec,
+          isPremium: form.isPremium,
+          coverUrl: form.coverUrl.trim(),
+          tags: form.tags,
+          chapters,
+        });
+        toast.success(`"${form.title}" was added to the library.`);
+      }
+    } catch {
+      toast.error("Couldn't save — check your connection and try again.");
+      return;
     }
 
     onSaved();

@@ -1,7 +1,7 @@
 import type { Collection } from "@/lib/types";
-import { readStorage, writeStorage } from "@/lib/local-storage";
+import { readCatalogStore, writeCatalogStore } from "./catalog-store";
 import { collections as seedCollections } from "./collections";
-import { notifyCatalogChanged, onCatalogChanged } from "./catalog-events";
+import { onCatalogChanged } from "./catalog-events";
 
 const COLLECTION_EDITS_KEY = "bookbee_collection_edits";
 const CUSTOM_COLLECTIONS_KEY = "bookbee_custom_collections";
@@ -18,47 +18,44 @@ export interface CollectionEdit {
 type CollectionEditsStore = Record<string, CollectionEdit>;
 
 export function getCollectionEdits(): CollectionEditsStore {
-  return readStorage<CollectionEditsStore>(COLLECTION_EDITS_KEY, {});
+  return readCatalogStore<CollectionEditsStore>(COLLECTION_EDITS_KEY, {});
 }
 
-export function saveCollectionEdit(id: string, edit: CollectionEdit): void {
+export async function saveCollectionEdit(id: string, edit: CollectionEdit): Promise<void> {
   const store = getCollectionEdits();
   store[id] = { ...store[id], ...edit };
-  writeStorage(COLLECTION_EDITS_KEY, store);
-  notifyCatalogChanged();
+  await writeCatalogStore(COLLECTION_EDITS_KEY, store);
 }
 
 function getCustomCollections(): Collection[] {
-  return readStorage<Collection[]>(CUSTOM_COLLECTIONS_KEY, []);
+  return readCatalogStore<Collection[]>(CUSTOM_COLLECTIONS_KEY, []);
 }
 
 function getDeletedCollectionIds(): string[] {
-  return readStorage<string[]>(DELETED_COLLECTIONS_KEY, []);
+  return readCatalogStore<string[]>(DELETED_COLLECTIONS_KEY, []);
 }
 
 /** Admin: create a brand-new collection. */
-export function createCollection(data: Omit<Collection, "id">): Collection {
+export async function createCollection(data: Omit<Collection, "id">): Promise<Collection> {
   const collection: Collection = { id: `custom-collection-${Date.now()}`, ...data };
-  writeStorage(CUSTOM_COLLECTIONS_KEY, [...getCustomCollections(), collection]);
-  notifyCatalogChanged();
+  await writeCatalogStore(CUSTOM_COLLECTIONS_KEY, [...getCustomCollections(), collection]);
   return collection;
 }
 
 /** Admin: remove a collection — hides seed ones, drops custom ones. */
-export function deleteCollection(id: string): void {
+export async function deleteCollection(id: string): Promise<void> {
   const custom = getCustomCollections();
   if (custom.some((c) => c.id === id)) {
-    writeStorage(CUSTOM_COLLECTIONS_KEY, custom.filter((c) => c.id !== id));
+    await writeCatalogStore(CUSTOM_COLLECTIONS_KEY, custom.filter((c) => c.id !== id));
   } else {
     const deleted = getDeletedCollectionIds();
-    if (!deleted.includes(id)) writeStorage(DELETED_COLLECTIONS_KEY, [...deleted, id]);
+    if (!deleted.includes(id)) await writeCatalogStore(DELETED_COLLECTIONS_KEY, [...deleted, id]);
   }
   const edits = getCollectionEdits();
   if (edits[id]) {
     delete edits[id];
-    writeStorage(COLLECTION_EDITS_KEY, edits);
+    await writeCatalogStore(COLLECTION_EDITS_KEY, edits);
   }
-  notifyCatalogChanged();
 }
 
 function applyEdit(collection: Collection, edit: CollectionEdit | undefined): Collection {

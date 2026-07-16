@@ -1,38 +1,70 @@
-import { readStorage, writeStorage } from "@/lib/local-storage";
+import { createClient } from "@/lib/supabase/client";
+
+/**
+ * Per-account avatar + bio, synced to the global `profiles` table so every
+ * browser (and the admin panel) shows the same picture for a given user,
+ * instead of only whichever browser uploaded it. Reads stay synchronous
+ * against an in-memory cache for the signed-in user (same shape as the old
+ * localStorage-backed API); writes upsert in the background. AuthProvider
+ * drives `syncProfileForUser` on every auth change.
+ */
 
 export interface ProfileExtras {
   bio: string;
   avatar: string;
 }
 
-const PROFILE_KEY = "bookbee_profile";
-const PROFILE_EVENT = "bookbee:profile-changed";
-
-// Profiles are keyed by account email so each member keeps their own bio and
-// avatar (and so the admin panel can show the right picture per user).
-type ProfileStore = Record<string, ProfileExtras>;
-
 const EMPTY: ProfileExtras = { bio: "", avatar: "" };
 
-function normalize(email: string): string {
-  return email.trim().toLowerCase();
-}
+const supabase = createClient();
 
-function readStore(): ProfileStore {
-  return readStorage<ProfileStore>(PROFILE_KEY, {});
-}
+let currentUserId: string | null = null;
+let cachedProfile: ProfileExtras = EMPTY;
 
-export function getProfile(email: string): ProfileExtras {
-  if (!email) return EMPTY;
-  return readStore()[normalize(email)] ?? EMPTY;
+export function getProfile(): ProfileExtras {
+  return cachedProfile;
 }
 
 export function setProfile(email: string, extras: Partial<ProfileExtras>): void {
-  if (!email) return;
-  const key = normalize(email);
-  const store = readStore();
-  store[key] = { ...EMPTY, ...store[key], ...extras };
-  writeStorage(PROFILE_KEY, store);
+  if (!currentUserId) return;
+  cachedProfile = { ...EMPTY, ...cachedProfile, ...extras };
+  notify();
+  void supabase
+    .from("profiles")
+    .upsert({
+      user_id: currentUserId,
+      email: email.trim().toLowerCase(),
+      avatar: cachedProfile.avatar,
+      bio: cachedProfile.bio,
+      updated_at: new Date().toISOString(),
+    });
+}
+
+/** Called by AuthProvider whenever the signed-in user changes. */
+export async function syncProfileForUser(
+  user: { id: string; email: string } | null,
+): Promise<void> {
+  currentUserId = user?.id ?? null;
+
+  if (!user) {
+    cachedProfile = EMPTY;
+    notify();
+    return;
+  }
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("avatar, bio")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  cachedProfile = { avatar: data?.avatar ?? "", bio: data?.bio ?? "" };
+  notify();
+}
+
+const PROFILE_EVENT = "bookbee:profile-changed";
+
+function notify(): void {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event(PROFILE_EVENT));
   }

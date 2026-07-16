@@ -69,7 +69,7 @@ export function CollectionFormDialog({
     );
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!title.trim()) {
       toast.error("Collection title is required.");
       return;
@@ -81,12 +81,17 @@ export function CollectionFormDialog({
       coverUrl: coverUrl.trim(),
       bookIds,
     };
-    if (collection) {
-      saveCollectionEdit(collection.id, payload);
-      toast.success(`"${title}" was updated.`);
-    } else {
-      createCollection(payload);
-      toast.success(`"${title}" was created.`);
+    try {
+      if (collection) {
+        await saveCollectionEdit(collection.id, payload);
+        toast.success(`"${title}" was updated.`);
+      } else {
+        await createCollection(payload);
+        toast.success(`"${title}" was created.`);
+      }
+    } catch {
+      toast.error("Couldn't save — check your connection and try again.");
+      return;
     }
     onSaved();
     onOpenChange(false);
