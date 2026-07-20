@@ -30,9 +30,9 @@ export async function GET(request: Request) {
     );
   }
 
-  const { data: profileRows } = await supabase.from("profiles").select("user_id, avatar");
+  const { data: profileRows } = await supabase.from("profiles").select("id, avatar_url");
   const avatarByUserId = new Map(
-    (profileRows ?? []).map((p: { user_id: string; avatar: string }) => [p.user_id, p.avatar]),
+    (profileRows ?? []).map((p: { id: string; avatar_url: string }) => [p.id, p.avatar_url]),
   );
 
   const users: AdminUser[] = [];

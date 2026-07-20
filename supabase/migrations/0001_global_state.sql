@@ -59,31 +59,16 @@ create policy "users update their own stats"
   with check (auth.uid() = user_id);
 
 -- ---------------------------------------------------------------------------
--- profiles: avatar (data URL) + bio, keyed by account so every browser and
--- the admin panel show the same picture for a given user.
+-- profiles: this table already exists in this project (auto-populated by an
+-- existing trigger on auth.users with id/email/full_name/avatar_url, with
+-- "select own" and "update own" RLS policies already in place). We only add
+-- the `bio` column this app needs, plus an insert policy as a safety net in
+-- case a future signup path doesn't go through that trigger. We deliberately
+-- do not touch the pre-existing select/update policies.
 -- ---------------------------------------------------------------------------
-create table if not exists public.profiles (
-  user_id uuid primary key references auth.users (id) on delete cascade,
-  email text not null,
-  avatar text not null default '',
-  bio text not null default '',
-  updated_at timestamptz not null default now()
-);
+alter table public.profiles add column if not exists bio text not null default '';
 
-alter table public.profiles enable row level security;
-
-drop policy if exists "profiles are publicly readable" on public.profiles;
-create policy "profiles are publicly readable"
-  on public.profiles for select
-  using (true);
-
-drop policy if exists "users insert their own profile" on public.profiles;
-create policy "users insert their own profile"
+drop policy if exists "Users can insert own profile" on public.profiles;
+create policy "Users can insert own profile"
   on public.profiles for insert
-  with check (auth.uid() = user_id);
-
-drop policy if exists "users update their own profile" on public.profiles;
-create policy "users update their own profile"
-  on public.profiles for update
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+  with check (auth.uid() = id);

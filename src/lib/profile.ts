@@ -7,6 +7,11 @@ import { createClient } from "@/lib/supabase/client";
  * against an in-memory cache for the signed-in user (same shape as the old
  * localStorage-backed API); writes upsert in the background. AuthProvider
  * drives `syncProfileForUser` on every auth change.
+ *
+ * `profiles` pre-dates this feature (auto-populated by an existing trigger
+ * on auth.users with columns `id`/`email`/`full_name`/`avatar_url`) — we
+ * reuse it rather than creating a rival table, so reads/writes here use
+ * `id` and `avatar_url` to match its real schema.
  */
 
 export interface ProfileExtras {
@@ -32,11 +37,10 @@ export function setProfile(email: string, extras: Partial<ProfileExtras>): void 
   void supabase
     .from("profiles")
     .upsert({
-      user_id: currentUserId,
+      id: currentUserId,
       email: email.trim().toLowerCase(),
-      avatar: cachedProfile.avatar,
+      avatar_url: cachedProfile.avatar,
       bio: cachedProfile.bio,
-      updated_at: new Date().toISOString(),
     });
 }
 
@@ -54,11 +58,11 @@ export async function syncProfileForUser(
 
   const { data } = await supabase
     .from("profiles")
-    .select("avatar, bio")
-    .eq("user_id", user.id)
+    .select("avatar_url, bio")
+    .eq("id", user.id)
     .maybeSingle();
 
-  cachedProfile = { avatar: data?.avatar ?? "", bio: data?.bio ?? "" };
+  cachedProfile = { avatar: data?.avatar_url ?? "", bio: data?.bio ?? "" };
   notify();
 }
 
