@@ -60,7 +60,7 @@ const SLIDES: Slide[] = [
     subtitle:
       "Unlimited downloads, AI chapter summaries, listening stats, and zero ads.",
     ctaLabel: "See Premium",
-    ctaHref: "#premium",
+    ctaHref: "/premium",
     from: "#0f2a24",
     to: "#0b0b0f",
     accent: "#22C55E",

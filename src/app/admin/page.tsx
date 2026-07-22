@@ -31,6 +31,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogoIcon } from "@/components/layout/LogoIcon";
@@ -45,7 +46,13 @@ import { categories } from "@/lib/mock-data/categories";
 import { getAdminBooks, deleteBook, saveBookEdit, onCatalogChanged } from "@/lib/mock-data/catalog";
 import { getAllCollections, deleteCollection } from "@/lib/mock-data/curation";
 import { getPlatformMetrics, timeAgo } from "@/lib/metrics";
-import { getPremiumSettings, savePremiumSettings, type PremiumSettings } from "@/lib/premium-settings";
+import {
+  getPremiumSettings,
+  savePremiumSettings,
+  promoCodesToText,
+  parsePromoCodesText,
+  type PremiumSettings,
+} from "@/lib/premium-settings";
 import { cn, formatDuration } from "@/lib/utils";
 import type { Book, Collection } from "@/lib/types";
 
@@ -65,6 +72,8 @@ interface PremiumRequest {
   email: string;
   name: string;
   status: "none" | "pending" | "active" | "rejected";
+  plan: "monthly" | "yearly";
+  promo_code: string | null;
   requested_at: string | null;
   updated_at: string;
 }
@@ -92,6 +101,9 @@ export default function AdminDashboardPage() {
   const [premiumRequests, setPremiumRequests] = useState<PremiumRequest[]>([]);
   const [premiumError, setPremiumError] = useState<string | null>(null);
   const [premiumForm, setPremiumForm] = useState<PremiumSettings>(getPremiumSettings());
+  const [promoCodesText, setPromoCodesText] = useState(() =>
+    promoCodesToText(getPremiumSettings().promoCodes),
+  );
   const [savingPremiumForm, setSavingPremiumForm] = useState(false);
 
   useEffect(() => {
@@ -168,7 +180,10 @@ export default function AdminDashboardPage() {
   async function handleSavePremiumForm() {
     setSavingPremiumForm(true);
     try {
-      await savePremiumSettings(premiumForm);
+      await savePremiumSettings({
+        ...premiumForm,
+        promoCodes: parsePromoCodesText(promoCodesText),
+      });
       toast.success("Premium payment details updated.");
     } catch {
       toast.error("Couldn't save — please try again.");
@@ -181,7 +196,15 @@ export default function AdminDashboardPage() {
   // mounts, so re-render once that hydration (or any other admin's edit)
   // lands — otherwise a fresh session briefly shows stale/empty data.
   useEffect(() => onCatalogChanged(refresh), []);
-  useEffect(() => onCatalogChanged(() => setPremiumForm(getPremiumSettings())), []);
+  useEffect(
+    () =>
+      onCatalogChanged(() => {
+        const settings = getPremiumSettings();
+        setPremiumForm(settings);
+        setPromoCodesText(promoCodesToText(settings.promoCodes));
+      }),
+    [],
+  );
 
   const adminBooks = useMemo(
     () => (isAdmin ? getAdminBooks() : []),
@@ -736,7 +759,10 @@ export default function AdminDashboardPage() {
                     <div key={r.user_id} className="flex items-center gap-3 p-4">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{r.name}</p>
-                        <p className="truncate text-xs text-muted-foreground">{r.email}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {r.email} · {r.plan}
+                          {r.promo_code ? ` · ${r.promo_code}` : ""}
+                        </p>
                       </div>
                       <Badge
                         variant={
@@ -801,14 +827,88 @@ export default function AdminDashboardPage() {
                     }
                   />
                 </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="pf-monthly">Monthly price (so&apos;m)</Label>
+                    <Input
+                      id="pf-monthly"
+                      type="number"
+                      value={premiumForm.priceMonthlySom}
+                      onChange={(e) =>
+                        setPremiumForm((prev) => ({
+                          ...prev,
+                          priceMonthlySom: Number(e.target.value) || 0,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="pf-yearly">Yearly price (so&apos;m)</Label>
+                    <Input
+                      id="pf-yearly"
+                      type="number"
+                      value={premiumForm.priceYearlySom}
+                      onChange={(e) =>
+                        setPremiumForm((prev) => ({
+                          ...prev,
+                          priceYearlySom: Number(e.target.value) || 0,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="pf-click">Click URL</Label>
+                    <Input
+                      id="pf-click"
+                      value={premiumForm.clickUrl}
+                      onChange={(e) =>
+                        setPremiumForm((prev) => ({ ...prev, clickUrl: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="pf-payme">Payme URL</Label>
+                    <Input
+                      id="pf-payme"
+                      value={premiumForm.paymeUrl}
+                      onChange={(e) =>
+                        setPremiumForm((prev) => ({ ...prev, paymeUrl: e.target.value }))
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="pf-email">Support email</Label>
+                    <Input
+                      id="pf-email"
+                      value={premiumForm.supportEmail}
+                      onChange={(e) =>
+                        setPremiumForm((prev) => ({ ...prev, supportEmail: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="pf-telegram">Support Telegram (without @)</Label>
+                    <Input
+                      id="pf-telegram"
+                      value={premiumForm.supportTelegram}
+                      onChange={(e) =>
+                        setPremiumForm((prev) => ({ ...prev, supportTelegram: e.target.value }))
+                      }
+                    />
+                  </div>
+                </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="pf-price">Price label</Label>
-                  <Input
-                    id="pf-price"
-                    value={premiumForm.priceLabel}
-                    onChange={(e) =>
-                      setPremiumForm((prev) => ({ ...prev, priceLabel: e.target.value }))
-                    }
+                  <Label htmlFor="pf-promo">Promo codes (one per line, CODE:PERCENT)</Label>
+                  <Textarea
+                    id="pf-promo"
+                    rows={3}
+                    placeholder="SUMMER10:10"
+                    value={promoCodesText}
+                    onChange={(e) => setPromoCodesText(e.target.value)}
                   />
                 </div>
                 <Button onClick={handleSavePremiumForm} disabled={savingPremiumForm}>

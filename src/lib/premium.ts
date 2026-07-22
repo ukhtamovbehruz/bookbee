@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/client";
  */
 
 export type PremiumStatus = "none" | "pending" | "active" | "rejected";
+export type PremiumPlan = "monthly" | "yearly";
 
 export interface CurrentPremiumUser {
   id: string;
@@ -33,7 +34,7 @@ export function getIsPremium(): boolean {
 }
 
 /** Called when the user taps "I've paid" — marks the request as pending review. */
-export function requestPremium(): void {
+export function requestPremium(plan: PremiumPlan, promoCode?: string): void {
   if (!currentUser) return;
   cachedStatus = "pending";
   notify();
@@ -42,6 +43,8 @@ export function requestPremium(): void {
     email: currentUser.email,
     name: currentUser.name,
     status: "pending",
+    plan,
+    promo_code: promoCode?.trim() || null,
     requested_at: new Date().toISOString(),
   });
 }

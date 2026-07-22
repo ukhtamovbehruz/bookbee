@@ -8,6 +8,7 @@ import { Popover as PopoverPrimitive } from "radix-ui";
 import {
   ChevronDown,
   ListMusic,
+  Megaphone,
   Pause,
   Play,
   RotateCcw,
@@ -43,6 +44,7 @@ export function ExpandedPlayer() {
     currentChapter,
     isPlaying,
     isLoading,
+    isAdPlaying,
     currentTime,
     duration,
     volume,
@@ -129,30 +131,42 @@ export function ExpandedPlayer() {
             isPlaying ? "scale-100" : "scale-[0.97]",
           )}
         >
-          <Image
-            src={currentBook.coverUrl}
-            alt=""
-            fill
-            sizes="208px"
-            priority
-            className="object-cover"
-          />
+          {isAdPlaying ? (
+            <div className="flex size-full items-center justify-center bg-primary/20">
+              <Megaphone className="size-12 text-primary" />
+            </div>
+          ) : (
+            <Image
+              src={currentBook.coverUrl}
+              alt=""
+              fill
+              sizes="208px"
+              priority
+              className="object-cover"
+            />
+          )}
         </div>
 
         <div className="w-full max-w-xl text-center">
           <div className="flex items-center justify-center gap-2">
             <h2 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">
-              {currentChapter?.title ?? currentBook.title}
+              {isAdPlaying ? "Advertisement" : (currentChapter?.title ?? currentBook.title)}
             </h2>
             <Equalizer playing={isPlaying} className="h-4 shrink-0" />
           </div>
-          <Link
-            href={`/book/${currentBook.id}`}
-            onClick={() => setExpanded(false)}
-            className="mt-1.5 inline-block text-sm text-white/70 transition-colors hover:text-white sm:text-base"
-          >
-            {currentBook.title} • {currentBook.author}
-          </Link>
+          {isAdPlaying ? (
+            <p className="mt-1.5 text-sm text-white/70 sm:text-base">
+              Your book resumes right after this
+            </p>
+          ) : (
+            <Link
+              href={`/book/${currentBook.id}`}
+              onClick={() => setExpanded(false)}
+              className="mt-1.5 inline-block text-sm text-white/70 transition-colors hover:text-white sm:text-base"
+            >
+              {currentBook.title} • {currentBook.author}
+            </Link>
+          )}
         </div>
 
         {/* Progress */}

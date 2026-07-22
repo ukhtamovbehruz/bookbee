@@ -20,7 +20,7 @@ export function useGuardedPlay() {
     }
     if (book.isPremium && !getIsPremium()) {
       toast.warning("This title is Premium-only.");
-      router.push("/#premium");
+      router.push("/premium");
       return;
     }
     playBook(book, chapterId);
