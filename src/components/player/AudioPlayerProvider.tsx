@@ -15,6 +15,18 @@ import { incrementPlayCount } from "@/lib/listeners";
 import { recordListenSeconds } from "@/lib/activity";
 import { resolveAudioSrc } from "@/lib/audio-store";
 import { getPlaybackProgress, savePlaybackProgress } from "@/lib/playback-progress";
+import { getIsPremium } from "@/lib/premium";
+
+// Non-Premium listeners hear a short audio ad every 2 hours of listening,
+// rotating through the available ad files.
+const AD_BREAK_INTERVAL_SEC = 2 * 60 * 60;
+const AD_SOURCES = [
+  "/audio/ads/ad-1.mp3",
+  "/audio/ads/ad-2.mp3",
+  "/audio/ads/ad-3.mp3",
+  "/audio/ads/ad-4.mp3",
+  "/audio/ads/ad-5.mp3",
+];
 
 interface AudioPlayerContextValue {
   currentBook: Book | null;
@@ -27,6 +39,7 @@ interface AudioPlayerContextValue {
   isMuted: boolean;
   playbackRate: number;
   isExpanded: boolean;
+  isAdPlaying: boolean;
   playBook: (book: Book, chapterId?: string) => void;
   togglePlayPause: () => void;
   pause: () => void;
@@ -81,7 +94,19 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   currentBookRef.current = currentBook;
   currentChapterRef.current = currentChapter;
 
+  // Ad breaks: how many listening seconds toward the next one, which ad
+  // plays next, whatever we need to resume once it finishes.
+  const [isAdPlaying, setIsAdPlaying] = useState(false);
+  const isAdPlayingRef = useRef(false);
+  isAdPlayingRef.current = isAdPlaying;
+  const adSecondsRef = useRef(0);
+  const adIndexRef = useRef(0);
+  const resumeAfterAdRef = useRef<{ book: Book; chapter: Chapter; positionSec: number } | null>(
+    null,
+  );
+
   const persistProgress = useCallback(() => {
+    if (isAdPlayingRef.current) return;
     const audio = audioRef.current;
     const book = currentBookRef.current;
     const chapter = currentChapterRef.current;
@@ -108,6 +133,29 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     },
     [],
   );
+
+  // Interrupts the current book with a rotating ad; onEnded (below) resumes
+  // the book from where it left off once the ad finishes.
+  const playAdBreak = useCallback(() => {
+    const audio = audioRef.current;
+    const book = currentBookRef.current;
+    const chapter = currentChapterRef.current;
+    if (!audio || !book || !chapter) return;
+    resumeAfterAdRef.current = { book, chapter, positionSec: audio.currentTime };
+    setIsAdPlaying(true);
+    const src = AD_SOURCES[adIndexRef.current % AD_SOURCES.length];
+    adIndexRef.current += 1;
+    audio.pause();
+    audio.currentTime = 0;
+    audio.src = src;
+    audio.play().catch(() => {
+      // Ad failed to load/play — don't strand the listener, resume the book.
+      setIsAdPlaying(false);
+      const resume = resumeAfterAdRef.current;
+      resumeAfterAdRef.current = null;
+      if (resume) playChapter(resume.book, resume.chapter, resume.positionSec);
+    });
+  }, [playChapter]);
 
   const playBook = useCallback(
     (book: Book, chapterId?: string) => {
@@ -167,6 +215,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const seekTo = useCallback((seconds: number) => {
+    if (isAdPlayingRef.current) return;
     const audio = audioRef.current;
     if (!audio) return;
     const clamped = Math.max(0, Math.min(seconds, audio.duration || seconds));
@@ -193,6 +242,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   );
 
   const nextChapter = useCallback(() => {
+    if (isAdPlayingRef.current) return;
     if (!currentBook || !currentChapter) return;
     const idx = currentBook.chapters.findIndex((c) => c.id === currentChapter.id);
     const next = currentBook.chapters[idx + 1];
@@ -200,6 +250,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
   }, [currentBook, currentChapter, playChapter]);
 
   const previousChapter = useCallback(() => {
+    if (isAdPlayingRef.current) return;
     if (!currentBook || !currentChapter) return;
     const idx = currentBook.chapters.findIndex((c) => c.id === currentChapter.id);
     const prev = currentBook.chapters[idx - 1];
@@ -249,6 +300,8 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     setCurrentChapter(null);
     setIsPlaying(false);
     setIsExpanded(false);
+    setIsAdPlaying(false);
+    resumeAfterAdRef.current = null;
     setCurrentTime(0);
     setDuration(0);
   }, [persistProgress]);
@@ -263,15 +316,23 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
 
   // Track real listening time toward the daily goal / BookBee Points, and
   // remember the position so the listener can resume where they stopped.
+  // Also counts toward the next ad break for non-Premium listeners.
   useEffect(() => {
-    if (!isPlaying) return;
+    if (!isPlaying || isAdPlaying) return;
     const STEP = 5;
     const interval = setInterval(() => {
       recordListenSeconds(STEP);
       persistProgress();
+      if (!getIsPremium()) {
+        adSecondsRef.current += STEP;
+        if (adSecondsRef.current >= AD_BREAK_INTERVAL_SEC) {
+          adSecondsRef.current = 0;
+          playAdBreak();
+        }
+      }
     }, STEP * 1000);
     return () => clearInterval(interval);
-  }, [isPlaying, persistProgress]);
+  }, [isPlaying, isAdPlaying, persistProgress, playAdBreak]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -287,7 +348,16 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
         pendingSeekRef.current = 0;
       }
     };
-    const onEnded = () => nextChapter();
+    const onEnded = () => {
+      if (isAdPlayingRef.current) {
+        setIsAdPlaying(false);
+        const resume = resumeAfterAdRef.current;
+        resumeAfterAdRef.current = null;
+        if (resume) playChapter(resume.book, resume.chapter, resume.positionSec);
+        return;
+      }
+      nextChapter();
+    };
     const onWaiting = () => setIsLoading(true);
     const onCanPlay = () => setIsLoading(false);
     const onPlay = () => setIsPlaying(true);
@@ -313,7 +383,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       audio.removeEventListener("play", onPlay);
       audio.removeEventListener("pause", onPause);
     };
-  }, [nextChapter, persistProgress]);
+  }, [nextChapter, persistProgress, playChapter]);
 
   const value: AudioPlayerContextValue = {
     currentBook,
@@ -326,6 +396,7 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     isMuted,
     playbackRate,
     isExpanded,
+    isAdPlaying,
     playBook,
     togglePlayPause,
     pause,
