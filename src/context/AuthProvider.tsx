@@ -14,6 +14,7 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { syncPointsForUser } from "@/lib/points";
 import { syncProfileForUser } from "@/lib/profile";
+import { syncPremiumForUser } from "@/lib/premium";
 
 export interface AuthUser {
   name: string;
@@ -70,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const statsUser = su && authUser ? { id: su.id, ...authUser } : null;
       void syncPointsForUser(statsUser);
       void syncProfileForUser(statsUser ? { id: statsUser.id, email: statsUser.email } : null);
+      void syncPremiumForUser(statsUser);
     };
 
     supabase.auth.getSession().then(({ data }) => {
@@ -181,7 +183,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser((prev) => {
         if (!prev) return prev;
         const userId = supabaseUserIdRef.current;
-        if (userId) void syncPointsForUser({ id: userId, email: prev.email, name: trimmed });
+        if (userId) {
+          void syncPointsForUser({ id: userId, email: prev.email, name: trimmed });
+          void syncPremiumForUser({ id: userId, email: prev.email, name: trimmed });
+        }
         return { ...prev, name: trimmed };
       });
     },
