@@ -23,7 +23,7 @@ export function UserMenu() {
   const [points, setPoints] = useState(0);
 
   useEffect(() => {
-    const refreshProfile = () => setAvatar(user ? getProfile(user.email).avatar : "");
+    const refreshProfile = () => setAvatar(user ? getProfile().avatar : "");
     const refreshPoints = () => setPoints(getPoints());
     refreshProfile();
     refreshPoints();

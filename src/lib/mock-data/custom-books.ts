@@ -1,5 +1,5 @@
 import type { Book, Chapter } from "@/lib/types";
-import { readStorage, writeStorage } from "@/lib/local-storage";
+import { readCatalogStore, writeCatalogStore } from "./catalog-store";
 import { generateChapters } from "./chapters";
 import { SAMPLE_AUDIO_URLS } from "@/lib/constants";
 
@@ -30,14 +30,14 @@ function slugify(title: string): string {
 }
 
 export function getCustomBooks(): Book[] {
-  return readStorage<Book[]>(CUSTOM_BOOKS_KEY, []);
+  return readCatalogStore<Book[]>(CUSTOM_BOOKS_KEY, []);
 }
 
 export function getCustomBookById(id: string): Book | undefined {
   return getCustomBooks().find((b) => b.id === id);
 }
 
-export function addCustomBook(input: NewBookInput): Book {
+export async function addCustomBook(input: NewBookInput): Promise<Book> {
   const existing = getCustomBooks();
   const baseId = slugify(input.title) || "book";
   let id = baseId;
@@ -86,12 +86,12 @@ export function addCustomBook(input: NewBookInput): Book {
     chapters,
   };
 
-  writeStorage(CUSTOM_BOOKS_KEY, [...existing, book]);
+  await writeCatalogStore(CUSTOM_BOOKS_KEY, [...existing, book]);
   return book;
 }
 
-export function removeCustomBook(id: string): void {
-  writeStorage(
+export async function removeCustomBook(id: string): Promise<void> {
+  await writeCatalogStore(
     CUSTOM_BOOKS_KEY,
     getCustomBooks().filter((b) => b.id !== id),
   );

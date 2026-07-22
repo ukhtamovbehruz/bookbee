@@ -38,9 +38,8 @@ import { CountUp } from "@/components/shared/CountUp";
 import { useAdminSession } from "@/hooks/useAdminSession";
 import { ADMIN_PASSWORD } from "@/lib/admin";
 import { categories } from "@/lib/mock-data/categories";
-import { getAdminBooks, deleteBook, saveBookEdit } from "@/lib/mock-data/catalog";
+import { getAdminBooks, deleteBook, saveBookEdit, onCatalogChanged } from "@/lib/mock-data/catalog";
 import { getAllCollections, deleteCollection } from "@/lib/mock-data/curation";
-import { getProfile } from "@/lib/profile";
 import { getPlatformMetrics, timeAgo } from "@/lib/metrics";
 import { cn, formatDuration } from "@/lib/utils";
 import type { Book, Collection } from "@/lib/types";
@@ -73,7 +72,7 @@ export default function AdminDashboardPage() {
   const [editingCollection, setEditingCollection] = useState<Collection | null>(null);
   const [quizBook, setQuizBook] = useState<Book | null>(null);
   const [query, setQuery] = useState("");
-  const [users, setUsers] = useState<{ name: string; email: string }[]>([]);
+  const [users, setUsers] = useState<{ name: string; email: string; avatar: string }[]>([]);
   const [usersError, setUsersError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -107,6 +106,11 @@ export default function AdminDashboardPage() {
   }, [isAdmin, tick]);
 
   const refresh = () => setTick((t) => t + 1);
+
+  // The catalog cache hydrates from Supabase asynchronously after this page
+  // mounts, so re-render once that hydration (or any other admin's edit)
+  // lands — otherwise a fresh session briefly shows stale/empty data.
+  useEffect(() => onCatalogChanged(refresh), []);
 
   const adminBooks = useMemo(
     () => (isAdmin ? getAdminBooks() : []),
@@ -458,8 +462,8 @@ export default function AdminDashboardPage() {
                           variant="ghost"
                           size="icon"
                           aria-label={`Restore ${book.title}`}
-                          onClick={() => {
-                            saveBookEdit(book.id, { hidden: false });
+                          onClick={async () => {
+                            await saveBookEdit(book.id, { hidden: false });
                             refresh();
                             toast.success(`Restored "${book.title}".`);
                           }}
@@ -471,8 +475,8 @@ export default function AdminDashboardPage() {
                           variant="ghost"
                           size="icon"
                           aria-label={`Remove ${book.title}`}
-                          onClick={() => {
-                            deleteBook(book.id);
+                          onClick={async () => {
+                            await deleteBook(book.id);
                             refresh();
                             toast.info(`Removed "${book.title}".`);
                           }}
@@ -554,8 +558,8 @@ export default function AdminDashboardPage() {
                         variant="ghost"
                         size="icon"
                         aria-label={`Delete ${collection.title}`}
-                        onClick={() => {
-                          deleteCollection(collection.id);
+                        onClick={async () => {
+                          await deleteCollection(collection.id);
                           refresh();
                           toast.info(`Removed "${collection.title}".`);
                         }}
@@ -599,7 +603,7 @@ export default function AdminDashboardPage() {
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {users.map((u, i) => {
-                  const avatar = getProfile(u.email).avatar;
+                  const avatar = u.avatar;
                   const initials = u.name
                     .split(" ")
                     .map((p) => p[0])

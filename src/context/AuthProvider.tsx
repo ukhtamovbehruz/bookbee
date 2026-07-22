@@ -5,12 +5,15 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { syncPointsForUser } from "@/lib/points";
+import { syncProfileForUser } from "@/lib/profile";
 
 export interface AuthUser {
   name: string;
@@ -56,19 +59,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [supabase] = useState(() => createClient());
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const supabaseUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let active = true;
+
+    const syncSideEffects = (su: SupabaseUser | null | undefined) => {
+      const authUser = toAuthUser(su);
+      supabaseUserIdRef.current = su?.id ?? null;
+      const statsUser = su && authUser ? { id: su.id, ...authUser } : null;
+      void syncPointsForUser(statsUser);
+      void syncProfileForUser(statsUser ? { id: statsUser.id, email: statsUser.email } : null);
+    };
 
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
       setUser(toAuthUser(data.session?.user));
       setIsReady(true);
+      syncSideEffects(data.session?.user);
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(toAuthUser(session?.user));
       setIsReady(true);
+      syncSideEffects(session?.user);
     });
 
     return () => {
@@ -164,7 +178,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         toast.error(error.message);
         return;
       }
-      setUser((prev) => (prev ? { ...prev, name: trimmed } : prev));
+      setUser((prev) => {
+        if (!prev) return prev;
+        const userId = supabaseUserIdRef.current;
+        if (userId) void syncPointsForUser({ id: userId, email: prev.email, name: trimmed });
+        return { ...prev, name: trimmed };
+      });
     },
     [supabase],
   );

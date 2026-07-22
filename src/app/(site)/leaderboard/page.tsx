@@ -7,8 +7,7 @@ import { Coins, Crown, Medal, Sparkles, Trophy } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthProvider";
-import { getPoints } from "@/lib/points";
-import { getLeaderboard, type LeaderRow } from "@/lib/leaderboard";
+import { fetchLeaderboard, type LeaderRow } from "@/lib/leaderboard";
 import { onActivityChanged } from "@/lib/activity";
 import { cn } from "@/lib/utils";
 
@@ -28,9 +27,18 @@ export default function LeaderboardPage() {
   const [rows, setRows] = useState<LeaderRow[]>([]);
 
   useEffect(() => {
-    const refresh = () => setRows(getLeaderboard(user?.name ?? null, getPoints()));
+    let active = true;
+    const refresh = () => {
+      fetchLeaderboard(user?.email ?? null).then((rows) => {
+        if (active) setRows(rows);
+      });
+    };
     refresh();
-    return onActivityChanged(refresh);
+    const off = onActivityChanged(refresh);
+    return () => {
+      active = false;
+      off();
+    };
   }, [user]);
 
   const top3 = rows.slice(0, 3);

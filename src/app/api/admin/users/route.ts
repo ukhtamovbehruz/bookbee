@@ -8,6 +8,7 @@ interface AdminUser {
   name: string;
   email: string;
   createdAt: string;
+  avatar: string;
 }
 
 /**
@@ -29,6 +30,11 @@ export async function GET(request: Request) {
     );
   }
 
+  const { data: profileRows } = await supabase.from("profiles").select("id, avatar_url");
+  const avatarByUserId = new Map(
+    (profileRows ?? []).map((p: { id: string; avatar_url: string }) => [p.id, p.avatar_url]),
+  );
+
   const users: AdminUser[] = [];
   const perPage = 200;
 
@@ -47,6 +53,7 @@ export async function GET(request: Request) {
         name: metaName || metaFullName || fallback,
         email: u.email ?? "",
         createdAt: u.created_at ?? "",
+        avatar: avatarByUserId.get(u.id) ?? "",
       });
     }
 

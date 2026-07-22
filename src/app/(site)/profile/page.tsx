@@ -25,7 +25,7 @@ import { ListeningInsights } from "@/components/profile/ListeningInsights";
 import { AchievementsPanel } from "@/components/profile/AchievementsPanel";
 import { CertificatesGallery } from "@/components/profile/CertificatesGallery";
 import { useAuth } from "@/context/AuthProvider";
-import { getProfile, setProfile } from "@/lib/profile";
+import { getProfile, setProfile, onProfileChanged } from "@/lib/profile";
 import { cn } from "@/lib/utils";
 
 type Tab = "overview" | "account" | "security" | "billing" | "notifications";
@@ -73,9 +73,13 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) return;
     setName(user.name);
-    const profile = getProfile(user.email);
-    setBio(profile.bio);
-    setAvatar(profile.avatar);
+    const refresh = () => {
+      const profile = getProfile();
+      setBio(profile.bio);
+      setAvatar(profile.avatar);
+    };
+    refresh();
+    return onProfileChanged(refresh);
   }, [user]);
 
   function handleAvatarFile(file: File) {
