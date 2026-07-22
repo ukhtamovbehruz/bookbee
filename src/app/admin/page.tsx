@@ -9,6 +9,8 @@ import { motion } from "framer-motion";
 import {
   Award,
   BookOpen,
+  Check,
+  Crown,
   GraduationCap,
   Headphones,
   LayoutGrid,
@@ -24,9 +26,11 @@ import {
   Star,
   Trash2,
   Users as UsersIcon,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogoIcon } from "@/components/layout/LogoIcon";
@@ -41,18 +45,29 @@ import { categories } from "@/lib/mock-data/categories";
 import { getAdminBooks, deleteBook, saveBookEdit, onCatalogChanged } from "@/lib/mock-data/catalog";
 import { getAllCollections, deleteCollection } from "@/lib/mock-data/curation";
 import { getPlatformMetrics, timeAgo } from "@/lib/metrics";
+import { getPremiumSettings, savePremiumSettings, type PremiumSettings } from "@/lib/premium-settings";
 import { cn, formatDuration } from "@/lib/utils";
 import type { Book, Collection } from "@/lib/types";
 
-type Section = "insights" | "library" | "users" | "curation" | "settings";
+type Section = "insights" | "library" | "users" | "premium" | "curation" | "settings";
 
 const NAV: { id: Section; label: string; icon: typeof LayoutGrid }[] = [
   { id: "insights", label: "Insights", icon: LayoutGrid },
   { id: "library", label: "Library", icon: LibraryIcon },
   { id: "users", label: "Users", icon: UsersIcon },
+  { id: "premium", label: "Premium", icon: Crown },
   { id: "curation", label: "Curation", icon: Sparkles },
   { id: "settings", label: "Settings", icon: SettingsIcon },
 ];
+
+interface PremiumRequest {
+  user_id: string;
+  email: string;
+  name: string;
+  status: "none" | "pending" | "active" | "rejected";
+  requested_at: string | null;
+  updated_at: string;
+}
 
 const ACTIVITY_ICON = {
   title: BookOpen,
@@ -74,6 +89,10 @@ export default function AdminDashboardPage() {
   const [query, setQuery] = useState("");
   const [users, setUsers] = useState<{ name: string; email: string; avatar: string }[]>([]);
   const [usersError, setUsersError] = useState<string | null>(null);
+  const [premiumRequests, setPremiumRequests] = useState<PremiumRequest[]>([]);
+  const [premiumError, setPremiumError] = useState<string | null>(null);
+  const [premiumForm, setPremiumForm] = useState<PremiumSettings>(getPremiumSettings());
+  const [savingPremiumForm, setSavingPremiumForm] = useState(false);
 
   useEffect(() => {
     if (isReady && !isAdmin) router.replace("/admin/login");
@@ -105,12 +124,64 @@ export default function AdminDashboardPage() {
     };
   }, [isAdmin, tick]);
 
+  // Premium membership requests — there's no payment gateway yet, so these
+  // are manual card-transfer requests waiting on admin approve/reject.
+  useEffect(() => {
+    if (!isAdmin) return;
+    let active = true;
+    fetch("/api/admin/premium", { headers: { "x-admin-secret": ADMIN_PASSWORD } })
+      .then(async (res) => {
+        const json = await res.json().catch(() => ({}));
+        if (!active) return;
+        if (!res.ok) {
+          setPremiumError(json.error ?? "Failed to load premium requests.");
+          setPremiumRequests([]);
+          return;
+        }
+        setPremiumError(null);
+        setPremiumRequests(json.requests ?? []);
+      })
+      .catch((err) => {
+        if (active) setPremiumError(String(err));
+      });
+    return () => {
+      active = false;
+    };
+  }, [isAdmin, tick]);
+
   const refresh = () => setTick((t) => t + 1);
+
+  async function reviewPremiumRequest(userId: string, action: "approve" | "reject") {
+    const res = await fetch("/api/admin/premium", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-secret": ADMIN_PASSWORD },
+      body: JSON.stringify({ userId, action }),
+    });
+    if (!res.ok) {
+      toast.error("Couldn't update this request — please try again.");
+      return;
+    }
+    toast.success(action === "approve" ? "Member upgraded to Premium." : "Request rejected.");
+    refresh();
+  }
+
+  async function handleSavePremiumForm() {
+    setSavingPremiumForm(true);
+    try {
+      await savePremiumSettings(premiumForm);
+      toast.success("Premium payment details updated.");
+    } catch {
+      toast.error("Couldn't save — please try again.");
+    } finally {
+      setSavingPremiumForm(false);
+    }
+  }
 
   // The catalog cache hydrates from Supabase asynchronously after this page
   // mounts, so re-render once that hydration (or any other admin's edit)
   // lands — otherwise a fresh session briefly shows stale/empty data.
   useEffect(() => onCatalogChanged(refresh), []);
+  useEffect(() => onCatalogChanged(() => setPremiumForm(getPremiumSettings())), []);
 
   const adminBooks = useMemo(
     () => (isAdmin ? getAdminBooks() : []),
@@ -631,6 +702,120 @@ export default function AdminDashboardPage() {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {section === "premium" && (
+          <div className="max-w-3xl space-y-8">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Premium</h1>
+              <p className="text-sm text-muted-foreground">
+                No payment gateway yet — members transfer to the card below and
+                request Premium; approve or reject them here.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-muted-foreground">Requests</h2>
+              {premiumError ? (
+                <div className="glass rounded-2xl p-10 text-center">
+                  <Crown className="mx-auto size-8 text-muted-foreground/50" />
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    Couldn&apos;t load requests from Supabase.
+                  </p>
+                  <p className="text-xs text-muted-foreground/70">{premiumError}</p>
+                </div>
+              ) : premiumRequests.length === 0 ? (
+                <div className="glass rounded-2xl p-10 text-center">
+                  <Crown className="mx-auto size-8 text-muted-foreground/50" />
+                  <p className="mt-3 text-sm text-muted-foreground">No requests yet.</p>
+                </div>
+              ) : (
+                <div className="glass divide-y divide-border rounded-2xl">
+                  {premiumRequests.map((r) => (
+                    <div key={r.user_id} className="flex items-center gap-3 p-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{r.name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{r.email}</p>
+                      </div>
+                      <Badge
+                        variant={
+                          r.status === "active"
+                            ? "default"
+                            : r.status === "pending"
+                              ? "secondary"
+                              : "outline"
+                        }
+                        className="text-[10px] capitalize"
+                      >
+                        {r.status}
+                      </Badge>
+                      {r.status === "pending" && (
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            aria-label={`Approve ${r.name}`}
+                            onClick={() => reviewPremiumRequest(r.user_id, "approve")}
+                          >
+                            <Check className="size-4 text-primary" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            aria-label={`Reject ${r.name}`}
+                            onClick={() => reviewPremiumRequest(r.user_id, "reject")}
+                          >
+                            <X className="size-4 text-destructive" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-muted-foreground">
+                Payment details shown to members
+              </h2>
+              <div className="glass space-y-4 rounded-2xl p-6">
+                <div className="space-y-1.5">
+                  <Label htmlFor="pf-card">Card number</Label>
+                  <Input
+                    id="pf-card"
+                    value={premiumForm.cardNumber}
+                    onChange={(e) =>
+                      setPremiumForm((prev) => ({ ...prev, cardNumber: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pf-holder">Cardholder name</Label>
+                  <Input
+                    id="pf-holder"
+                    value={premiumForm.cardHolder}
+                    onChange={(e) =>
+                      setPremiumForm((prev) => ({ ...prev, cardHolder: e.target.value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pf-price">Price label</Label>
+                  <Input
+                    id="pf-price"
+                    value={premiumForm.priceLabel}
+                    onChange={(e) =>
+                      setPremiumForm((prev) => ({ ...prev, priceLabel: e.target.value }))
+                    }
+                  />
+                </div>
+                <Button onClick={handleSavePremiumForm} disabled={savingPremiumForm}>
+                  {savingPremiumForm ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            </div>
           </div>
         )}
 
