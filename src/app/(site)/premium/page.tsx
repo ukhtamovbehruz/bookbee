@@ -120,13 +120,17 @@ export default function PremiumPage() {
     toast.success(`Promo kod qo'llandi: -${match.discountPercent}%`);
   }
 
-  function handleRequest() {
+  async function handleRequest() {
     if (!user) {
       toast.warning("Avval ro'yxatdan o'ting, keyin Premium so'rovini yuboring.");
       return;
     }
-    requestPremium(plan, appliedPromo?.code);
-    toast.success("So'rov yuborildi! 24 soat ichida Premium faollashadi.");
+    const ok = await requestPremium(plan, appliedPromo?.code);
+    if (ok) {
+      toast.success("So'rov yuborildi! 24 soat ichida Premium faollashadi.");
+    } else {
+      toast.error("So'rovni yuborib bo'lmadi — internetni tekshirib qayta urinib ko'ring.");
+    }
   }
 
   function copyCard() {

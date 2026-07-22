@@ -5,7 +5,11 @@ import { createClient } from "@/lib/supabase/client";
  * There's no payment gateway yet (Click/Payme merchant approval pending),
  * so this models a manual flow: the user transfers money to a published
  * card and requests premium; an admin reviews and approves from the admin
- * panel. Reads stay synchronous against an in-memory cache for the signed-in
+ * panel. Memberships expire (30d monthly / 365d yearly, set by the admin
+ * approval route) — an "active" row past its `expires_at` reads back as
+ * "none" here, no separate cron job needed to demote it.
+ *
+ * Reads stay synchronous against an in-memory cache for the signed-in
  * user; writes upsert in the background. AuthProvider drives
  * `syncPremiumForUser` on every auth change.
  */
@@ -24,21 +28,31 @@ const PREMIUM_EVENT = "bookbee:premium-changed";
 
 let currentUser: CurrentPremiumUser | null = null;
 let cachedStatus: PremiumStatus = "none";
+let cachedExpiresAt: string | null = null;
 
+/** Raw status, but an expired "active" row reads back as "none". */
 export function getPremiumStatus(): PremiumStatus {
+  if (cachedStatus === "active" && cachedExpiresAt && new Date(cachedExpiresAt) < new Date()) {
+    return "none";
+  }
   return cachedStatus;
 }
 
 export function getIsPremium(): boolean {
-  return cachedStatus === "active";
+  return getPremiumStatus() === "active";
 }
 
-/** Called when the user taps "I've paid" — marks the request as pending review. */
-export function requestPremium(plan: PremiumPlan, promoCode?: string): void {
-  if (!currentUser) return;
-  cachedStatus = "pending";
-  notify();
-  void supabase.from("premium_status").upsert({
+/**
+ * Called when the user taps "I've paid" — marks the request as pending
+ * review. Returns whether it actually saved, so the caller can tell the
+ * user if something went wrong instead of optimistically assuming success.
+ */
+export async function requestPremium(
+  plan: PremiumPlan,
+  promoCode?: string,
+): Promise<boolean> {
+  if (!currentUser) return false;
+  const { error } = await supabase.from("premium_status").upsert({
     user_id: currentUser.id,
     email: currentUser.email,
     name: currentUser.name,
@@ -47,6 +61,11 @@ export function requestPremium(plan: PremiumPlan, promoCode?: string): void {
     promo_code: promoCode?.trim() || null,
     requested_at: new Date().toISOString(),
   });
+  if (error) return false;
+  cachedStatus = "pending";
+  cachedExpiresAt = null;
+  notify();
+  return true;
 }
 
 /** Called by AuthProvider whenever the signed-in user changes. */
@@ -57,17 +76,19 @@ export async function syncPremiumForUser(
 
   if (!user) {
     cachedStatus = "none";
+    cachedExpiresAt = null;
     notify();
     return;
   }
 
   const { data } = await supabase
     .from("premium_status")
-    .select("status")
+    .select("status, expires_at")
     .eq("user_id", user.id)
     .maybeSingle();
 
   cachedStatus = (data?.status as PremiumStatus | undefined) ?? "none";
+  cachedExpiresAt = data?.expires_at ?? null;
   notify();
 }
 

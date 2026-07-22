@@ -74,6 +74,7 @@ interface PremiumRequest {
   status: "none" | "pending" | "active" | "rejected";
   plan: "monthly" | "yearly";
   promo_code: string | null;
+  expires_at: string | null;
   requested_at: string | null;
   updated_at: string;
 }
@@ -163,11 +164,15 @@ export default function AdminDashboardPage() {
 
   const refresh = () => setTick((t) => t + 1);
 
-  async function reviewPremiumRequest(userId: string, action: "approve" | "reject") {
+  async function reviewPremiumRequest(
+    userId: string,
+    action: "approve" | "reject",
+    plan: "monthly" | "yearly",
+  ) {
     const res = await fetch("/api/admin/premium", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-admin-secret": ADMIN_PASSWORD },
-      body: JSON.stringify({ userId, action }),
+      body: JSON.stringify({ userId, action, plan }),
     });
     if (!res.ok) {
       toast.error("Couldn't update this request — please try again.");
@@ -755,26 +760,35 @@ export default function AdminDashboardPage() {
                 </div>
               ) : (
                 <div className="glass divide-y divide-border rounded-2xl">
-                  {premiumRequests.map((r) => (
+                  {premiumRequests.map((r) => {
+                    const isExpired =
+                      r.status === "active" &&
+                      r.expires_at !== null &&
+                      new Date(r.expires_at) < new Date();
+                    const displayStatus = isExpired ? "expired" : r.status;
+                    return (
                     <div key={r.user_id} className="flex items-center gap-3 p-4">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{r.name}</p>
                         <p className="truncate text-xs text-muted-foreground">
                           {r.email} · {r.plan}
                           {r.promo_code ? ` · ${r.promo_code}` : ""}
+                          {r.status === "active" && r.expires_at
+                            ? ` · ${isExpired ? "expired" : "expires"} ${new Date(r.expires_at).toLocaleDateString()}`
+                            : ""}
                         </p>
                       </div>
                       <Badge
                         variant={
-                          r.status === "active"
+                          displayStatus === "active"
                             ? "default"
-                            : r.status === "pending"
+                            : displayStatus === "pending"
                               ? "secondary"
                               : "outline"
                         }
                         className="text-[10px] capitalize"
                       >
-                        {r.status}
+                        {displayStatus}
                       </Badge>
                       {r.status === "pending" && (
                         <div className="flex items-center gap-1">
@@ -782,7 +796,7 @@ export default function AdminDashboardPage() {
                             size="icon"
                             variant="ghost"
                             aria-label={`Approve ${r.name}`}
-                            onClick={() => reviewPremiumRequest(r.user_id, "approve")}
+                            onClick={() => reviewPremiumRequest(r.user_id, "approve", r.plan)}
                           >
                             <Check className="size-4 text-primary" />
                           </Button>
@@ -790,14 +804,15 @@ export default function AdminDashboardPage() {
                             size="icon"
                             variant="ghost"
                             aria-label={`Reject ${r.name}`}
-                            onClick={() => reviewPremiumRequest(r.user_id, "reject")}
+                            onClick={() => reviewPremiumRequest(r.user_id, "reject", r.plan)}
                           >
                             <X className="size-4 text-destructive" />
                           </Button>
                         </div>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -902,11 +917,11 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="pf-promo">Promo codes (one per line, CODE:PERCENT)</Label>
+                  <Label htmlFor="pf-promo">Promo codes (one per line: CODE PERCENT)</Label>
                   <Textarea
                     id="pf-promo"
                     rows={3}
-                    placeholder="SUMMER10:10"
+                    placeholder="SUMMER10 10"
                     value={promoCodesText}
                     onChange={(e) => setPromoCodesText(e.target.value)}
                   />

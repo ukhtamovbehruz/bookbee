@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabase
     .from("premium_status")
-    .select("user_id, email, name, status, plan, promo_code, requested_at, updated_at")
+    .select("user_id, email, name, status, plan, promo_code, expires_at, requested_at, updated_at")
     .order("requested_at", { ascending: false, nullsFirst: false });
 
   if (error) {
@@ -47,6 +47,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const userId = typeof body?.userId === "string" ? body.userId : null;
   const action = body?.action === "approve" || body?.action === "reject" ? body.action : null;
+  const plan = body?.plan === "yearly" ? "yearly" : "monthly";
 
   if (!userId || !action) {
     return NextResponse.json({ error: "Missing userId or action." }, { status: 400 });
@@ -60,13 +61,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const { error } = await supabase
-    .from("premium_status")
-    .update({
-      status: action === "approve" ? "active" : "rejected",
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", userId);
+  const update: Record<string, unknown> = {
+    status: action === "approve" ? "active" : "rejected",
+    updated_at: new Date().toISOString(),
+  };
+  if (action === "approve") {
+    const days = plan === "yearly" ? 365 : 30;
+    update.expires_at = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+  }
+
+  const { error } = await supabase.from("premium_status").update(update).eq("user_id", userId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
