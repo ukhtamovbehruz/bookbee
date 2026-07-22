@@ -47,19 +47,24 @@ export async function savePremiumSettings(settings: PremiumSettings): Promise<vo
   await writeCatalogStore(PREMIUM_SETTINGS_KEY, settings);
 }
 
-/** Serializes promo codes to the "CODE:PERCENT" per-line format the admin form edits. */
+/** Serializes promo codes to the "CODE PERCENT" per-line format the admin form edits. */
 export function promoCodesToText(codes: PromoCode[]): string {
-  return codes.map((c) => `${c.code}:${c.discountPercent}`).join("\n");
+  return codes.map((c) => `${c.code} ${c.discountPercent}`).join("\n");
 }
 
-/** Parses the admin form's "CODE:PERCENT" per-line text back into promo codes. */
+/**
+ * Parses the admin form's per-line text back into promo codes. Accepts
+ * either a space or a colon between the code and the percentage (e.g.
+ * "SUMMER10 10" or "SUMMER10:10") so older colon-separated entries keep
+ * working.
+ */
 export function parsePromoCodesText(text: string): PromoCode[] {
   return text
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const [code, percent] = line.split(":");
+      const [code, percent] = line.split(/[\s:]+/).filter(Boolean);
       return {
         code: (code ?? "").trim().toUpperCase(),
         discountPercent: Math.max(0, Math.min(100, Number(percent) || 0)),
