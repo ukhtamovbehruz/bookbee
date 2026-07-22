@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabase
     .from("premium_status")
-    .select("user_id, email, name, status, requested_at, updated_at")
+    .select("user_id, email, name, status, plan, promo_code, requested_at, updated_at")
     .order("requested_at", { ascending: false, nullsFirst: false });
 
   if (error) {

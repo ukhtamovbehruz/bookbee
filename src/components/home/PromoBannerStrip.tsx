@@ -84,7 +84,7 @@ function buildBanners(allBooks: Book[]): Banner[] {
       title: "Unlock offline listening",
       subtitle: "Unlimited downloads, AI chapter summaries, and zero ads.",
       ctaLabel: "See Premium",
-      ctaHref: "#premium",
+      ctaHref: "/premium",
       from: "#241a3a",
       to: "#0b0b0f",
       accent: "#A78BFA",
