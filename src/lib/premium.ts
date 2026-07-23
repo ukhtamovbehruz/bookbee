@@ -28,6 +28,7 @@ const PREMIUM_EVENT = "bookbee:premium-changed";
 
 let currentUser: CurrentPremiumUser | null = null;
 let cachedStatus: PremiumStatus = "none";
+let cachedPlan: PremiumPlan | null = null;
 let cachedExpiresAt: string | null = null;
 
 /** Raw status, but an expired "active" row reads back as "none". */
@@ -40,6 +41,16 @@ export function getPremiumStatus(): PremiumStatus {
 
 export function getIsPremium(): boolean {
   return getPremiumStatus() === "active";
+}
+
+/** Which plan the current (non-expired, active) membership is on, if any. */
+export function getPremiumPlan(): PremiumPlan | null {
+  return getPremiumStatus() === "active" ? cachedPlan : null;
+}
+
+/** When the current membership expires, if it's active and set to expire. */
+export function getPremiumExpiresAt(): string | null {
+  return getPremiumStatus() === "active" ? cachedExpiresAt : null;
 }
 
 /**
@@ -63,6 +74,7 @@ export async function requestPremium(
   });
   if (error) return false;
   cachedStatus = "pending";
+  cachedPlan = plan;
   cachedExpiresAt = null;
   notify();
   return true;
@@ -76,6 +88,7 @@ export async function syncPremiumForUser(
 
   if (!user) {
     cachedStatus = "none";
+    cachedPlan = null;
     cachedExpiresAt = null;
     notify();
     return;
@@ -83,11 +96,12 @@ export async function syncPremiumForUser(
 
   const { data } = await supabase
     .from("premium_status")
-    .select("status, expires_at")
+    .select("status, plan, expires_at")
     .eq("user_id", user.id)
     .maybeSingle();
 
   cachedStatus = (data?.status as PremiumStatus | undefined) ?? "none";
+  cachedPlan = (data?.plan as PremiumPlan | undefined) ?? null;
   cachedExpiresAt = data?.expires_at ?? null;
   notify();
 }

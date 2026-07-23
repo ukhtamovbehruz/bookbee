@@ -28,7 +28,7 @@ import {
   type PremiumStatus,
   type PremiumPlan,
 } from "@/lib/premium";
-import { getPremiumSettings } from "@/lib/premium-settings";
+import { getPremiumSettings, isPromoCodeExpired, formatSom } from "@/lib/premium-settings";
 import { onCatalogChanged } from "@/lib/mock-data/catalog-events";
 import { staggerContainer, slideUp } from "@/animations/variants";
 import { cn } from "@/lib/utils";
@@ -72,10 +72,6 @@ const BENEFITS = [
   },
 ];
 
-function formatSom(amount: number): string {
-  return `${Math.round(amount).toLocaleString("ru-RU")} so'm`;
-}
-
 export default function PremiumPage() {
   const { user } = useAuth();
   const [status, setStatus] = useState<PremiumStatus>("none");
@@ -114,6 +110,10 @@ export default function PremiumPage() {
     const match = settings.promoCodes.find((p) => p.code.toUpperCase() === code);
     if (!match) {
       toast.error("Promo kod topilmadi.");
+      return;
+    }
+    if (isPromoCodeExpired(match)) {
+      toast.error("Promo kod muddati tugagan.");
       return;
     }
     setAppliedPromo({ code: match.code, discountPercent: match.discountPercent });

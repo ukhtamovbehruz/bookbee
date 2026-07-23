@@ -10,6 +10,8 @@ import { readCatalogStore, writeCatalogStore } from "@/lib/mock-data/catalog-sto
 export interface PromoCode {
   code: string;
   discountPercent: number;
+  /** ISO date (yyyy-mm-dd) the code stops working, or null for no expiry. */
+  expiresAt: string | null;
 }
 
 export interface PremiumSettings {
@@ -40,35 +42,24 @@ const DEFAULT_SETTINGS: PremiumSettings = {
 
 export function getPremiumSettings(): PremiumSettings {
   const stored = readCatalogStore<Partial<PremiumSettings>>(PREMIUM_SETTINGS_KEY, {});
-  return { ...DEFAULT_SETTINGS, ...stored };
+  const merged = { ...DEFAULT_SETTINGS, ...stored };
+  // Older saved codes may predate the expiresAt field.
+  merged.promoCodes = (merged.promoCodes ?? []).map((p) => ({
+    code: p.code,
+    discountPercent: p.discountPercent,
+    expiresAt: p.expiresAt ?? null,
+  }));
+  return merged;
 }
 
 export async function savePremiumSettings(settings: PremiumSettings): Promise<void> {
   await writeCatalogStore(PREMIUM_SETTINGS_KEY, settings);
 }
 
-/** Serializes promo codes to the "CODE PERCENT" per-line format the admin form edits. */
-export function promoCodesToText(codes: PromoCode[]): string {
-  return codes.map((c) => `${c.code} ${c.discountPercent}`).join("\n");
+export function isPromoCodeExpired(code: PromoCode): boolean {
+  return code.expiresAt !== null && new Date(code.expiresAt) < new Date();
 }
 
-/**
- * Parses the admin form's per-line text back into promo codes. Accepts
- * either a space or a colon between the code and the percentage (e.g.
- * "SUMMER10 10" or "SUMMER10:10") so older colon-separated entries keep
- * working.
- */
-export function parsePromoCodesText(text: string): PromoCode[] {
-  return text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [code, percent] = line.split(/[\s:]+/).filter(Boolean);
-      return {
-        code: (code ?? "").trim().toUpperCase(),
-        discountPercent: Math.max(0, Math.min(100, Number(percent) || 0)),
-      };
-    })
-    .filter((c) => c.code.length > 0);
+export function formatSom(amount: number): string {
+  return `${Math.round(amount).toLocaleString("ru-RU")} so'm`;
 }
