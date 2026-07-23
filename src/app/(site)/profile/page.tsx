@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   BellRing,
@@ -26,6 +27,16 @@ import { AchievementsPanel } from "@/components/profile/AchievementsPanel";
 import { CertificatesGallery } from "@/components/profile/CertificatesGallery";
 import { useAuth } from "@/context/AuthProvider";
 import { getProfile, setProfile, onProfileChanged } from "@/lib/profile";
+import {
+  getPremiumStatus,
+  getPremiumPlan,
+  getPremiumExpiresAt,
+  onPremiumChanged,
+  type PremiumStatus,
+  type PremiumPlan,
+} from "@/lib/premium";
+import { getPremiumSettings, formatSom } from "@/lib/premium-settings";
+import { onCatalogChanged } from "@/lib/mock-data/catalog-events";
 import { cn } from "@/lib/utils";
 
 type Tab = "overview" | "account" | "security" | "billing" | "notifications";
@@ -65,10 +76,26 @@ export default function ProfilePage() {
   const [bio, setBio] = useState("");
   const [avatar, setAvatar] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [premiumStatus, setPremiumStatus] = useState<PremiumStatus>("none");
+  const [premiumPlan, setPremiumPlanState] = useState<PremiumPlan | null>(null);
+  const [premiumExpiresAt, setPremiumExpiresAt] = useState<string | null>(null);
+  const [premiumSettings, setPremiumSettings] = useState(() => getPremiumSettings());
 
   useEffect(() => {
     if (isReady && !user) router.replace("/login");
   }, [isReady, user, router]);
+
+  useEffect(() => {
+    const refresh = () => {
+      setPremiumStatus(getPremiumStatus());
+      setPremiumPlanState(getPremiumPlan());
+      setPremiumExpiresAt(getPremiumExpiresAt());
+    };
+    refresh();
+    return onPremiumChanged(refresh);
+  }, []);
+
+  useEffect(() => onCatalogChanged(() => setPremiumSettings(getPremiumSettings())), []);
 
   useEffect(() => {
     if (!user) return;
@@ -147,10 +174,12 @@ export default function ProfilePage() {
               }}
             />
             <p className="mt-4 font-semibold">{user.name}</p>
-            <Badge variant="secondary" className="mt-2 gap-1">
-              <Crown className="size-3" />
-              Premium Member
-            </Badge>
+            {premiumStatus === "active" && (
+              <Badge variant="secondary" className="mt-2 gap-1">
+                <Crown className="size-3" />
+                Premium Member
+              </Badge>
+            )}
           </div>
 
           <LevelBadge />
@@ -267,35 +296,48 @@ export default function ProfilePage() {
           {tab === "billing" && (
             <div className="glass rounded-2xl p-6">
               <h2 className="text-lg font-semibold">Billing</h2>
-              <div className="mt-4 flex flex-col gap-4 rounded-2xl border border-white/10 p-5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="flex size-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                    <Crown className="size-5" />
-                  </span>
-                  <div>
-                    <p className="font-semibold">Pro Plan</p>
-                    <p className="text-sm text-muted-foreground">$12.00 / month</p>
+              {premiumStatus === "active" ? (
+                <div className="mt-4 flex flex-col gap-4 rounded-2xl border border-white/10 p-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                      <Crown className="size-5" />
+                    </span>
+                    <div>
+                      <p className="font-semibold">
+                        {premiumPlan === "yearly" ? "Yillik Premium" : "Oylik Premium"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {premiumPlan === "yearly"
+                          ? `${formatSom(premiumSettings.priceYearlySom)} / yil`
+                          : `${formatSom(premiumSettings.priceMonthlySom)} / oy`}
+                      </p>
+                    </div>
                   </div>
+                  {premiumExpiresAt && (
+                    <div className="text-sm text-muted-foreground">
+                      <p>
+                        Amal qilish muddati:{" "}
+                        <span className="text-foreground">
+                          {new Date(premiumExpiresAt).toLocaleDateString()}
+                        </span>
+                      </p>
+                    </div>
+                  )}
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  <p>
-                    Next billing:{" "}
-                    <span className="text-foreground">Aug 6, 2026</span>
-                  </p>
-                  <p>
-                    Payment method:{" "}
-                    <span className="text-foreground">•••• 4242</span>
-                  </p>
+              ) : premiumStatus === "pending" ? (
+                <div className="mt-4 rounded-2xl border border-white/10 p-5 text-sm text-muted-foreground">
+                  Premium so&apos;rovingiz ko&apos;rib chiqilmoqda — 24 soat ichida faollashadi.
                 </div>
-              </div>
-              <div className="mt-4 flex gap-3">
-                <Button onClick={() => toast.info("Plan management coming soon.")}>
-                  Manage Plan
-                </Button>
-                <Button variant="ghost" onClick={() => toast.info("No transactions yet.")}>
-                  View Transaction History
-                </Button>
-              </div>
+              ) : (
+                <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-white/10 p-5 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Siz hozircha Premium a&apos;zo emassiz.
+                  </p>
+                  <Button asChild>
+                    <Link href="/premium">Premium&apos;ga o&apos;tish</Link>
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 

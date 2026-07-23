@@ -31,7 +31,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogoIcon } from "@/components/layout/LogoIcon";
@@ -49,9 +48,9 @@ import { getPlatformMetrics, timeAgo } from "@/lib/metrics";
 import {
   getPremiumSettings,
   savePremiumSettings,
-  promoCodesToText,
-  parsePromoCodesText,
+  isPromoCodeExpired,
   type PremiumSettings,
+  type PromoCode,
 } from "@/lib/premium-settings";
 import { cn, formatDuration } from "@/lib/utils";
 import type { Book, Collection } from "@/lib/types";
@@ -102,10 +101,28 @@ export default function AdminDashboardPage() {
   const [premiumRequests, setPremiumRequests] = useState<PremiumRequest[]>([]);
   const [premiumError, setPremiumError] = useState<string | null>(null);
   const [premiumForm, setPremiumForm] = useState<PremiumSettings>(getPremiumSettings());
-  const [promoCodesText, setPromoCodesText] = useState(() =>
-    promoCodesToText(getPremiumSettings().promoCodes),
-  );
   const [savingPremiumForm, setSavingPremiumForm] = useState(false);
+
+  function updatePromoCode(index: number, patch: Partial<PromoCode>) {
+    setPremiumForm((prev) => ({
+      ...prev,
+      promoCodes: prev.promoCodes.map((p, i) => (i === index ? { ...p, ...patch } : p)),
+    }));
+  }
+
+  function addPromoCode() {
+    setPremiumForm((prev) => ({
+      ...prev,
+      promoCodes: [...prev.promoCodes, { code: "", discountPercent: 10, expiresAt: null }],
+    }));
+  }
+
+  function removePromoCode(index: number) {
+    setPremiumForm((prev) => ({
+      ...prev,
+      promoCodes: prev.promoCodes.filter((_, i) => i !== index),
+    }));
+  }
 
   useEffect(() => {
     if (isReady && !isAdmin) router.replace("/admin/login");
@@ -185,10 +202,7 @@ export default function AdminDashboardPage() {
   async function handleSavePremiumForm() {
     setSavingPremiumForm(true);
     try {
-      await savePremiumSettings({
-        ...premiumForm,
-        promoCodes: parsePromoCodesText(promoCodesText),
-      });
+      await savePremiumSettings(premiumForm);
       toast.success("Premium payment details updated.");
     } catch {
       toast.error("Couldn't save — please try again.");
@@ -201,15 +215,7 @@ export default function AdminDashboardPage() {
   // mounts, so re-render once that hydration (or any other admin's edit)
   // lands — otherwise a fresh session briefly shows stale/empty data.
   useEffect(() => onCatalogChanged(refresh), []);
-  useEffect(
-    () =>
-      onCatalogChanged(() => {
-        const settings = getPremiumSettings();
-        setPremiumForm(settings);
-        setPromoCodesText(promoCodesToText(settings.promoCodes));
-      }),
-    [],
-  );
+  useEffect(() => onCatalogChanged(() => setPremiumForm(getPremiumSettings())), []);
 
   const adminBooks = useMemo(
     () => (isAdmin ? getAdminBooks() : []),
@@ -917,14 +923,84 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="pf-promo">Promo codes (one per line: CODE PERCENT)</Label>
-                  <Textarea
-                    id="pf-promo"
-                    rows={3}
-                    placeholder="SUMMER10 10"
-                    value={promoCodesText}
-                    onChange={(e) => setPromoCodesText(e.target.value)}
-                  />
+                  <Label>Promo codes</Label>
+                  <div className="overflow-x-auto rounded-xl border border-border">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left text-xs text-muted-foreground">
+                          <th className="p-2 font-medium">Promocode</th>
+                          <th className="p-2 font-medium">Discount</th>
+                          <th className="p-2 font-medium">Amal qilish muddati</th>
+                          <th className="w-10 p-2" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {premiumForm.promoCodes.map((p, i) => (
+                          <tr key={i} className="border-b border-border last:border-0">
+                            <td className="p-2">
+                              <Input
+                                value={p.code}
+                                onChange={(e) =>
+                                  updatePromoCode(i, { code: e.target.value.toUpperCase() })
+                                }
+                                placeholder="SUMMER10"
+                                className="w-32"
+                              />
+                            </td>
+                            <td className="p-2">
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  type="number"
+                                  value={p.discountPercent}
+                                  onChange={(e) =>
+                                    updatePromoCode(i, {
+                                      discountPercent: Number(e.target.value) || 0,
+                                    })
+                                  }
+                                  className="w-20"
+                                />
+                                <span className="text-muted-foreground">%</span>
+                              </div>
+                            </td>
+                            <td className="p-2">
+                              <Input
+                                type="date"
+                                value={p.expiresAt ?? ""}
+                                onChange={(e) =>
+                                  updatePromoCode(i, { expiresAt: e.target.value || null })
+                                }
+                                className="w-40"
+                              />
+                              {isPromoCodeExpired(p) && (
+                                <p className="mt-1 text-xs text-destructive">Expired</p>
+                              )}
+                            </td>
+                            <td className="p-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label={`Remove ${p.code || "promo code"}`}
+                                onClick={() => removePromoCode(i)}
+                              >
+                                <Trash2 className="size-4 text-destructive" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                        {premiumForm.promoCodes.length === 0 && (
+                          <tr>
+                            <td colSpan={4} className="p-4 text-center text-muted-foreground">
+                              No promo codes yet.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  <Button variant="outline" size="sm" className="gap-1.5" onClick={addPromoCode}>
+                    <Plus className="size-4" />
+                    Add promo code
+                  </Button>
                 </div>
                 <Button onClick={handleSavePremiumForm} disabled={savingPremiumForm}>
                   {savingPremiumForm ? "Saving..." : "Save"}
